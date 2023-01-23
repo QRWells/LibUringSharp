@@ -10,7 +10,7 @@ public class RingProbe : IDisposable
 
     public RingProbe()
     {
-        using var ring = new Ring(2, 0);
+        using var ring = new Ring(2);
         const uint len = io_uring_probe.Size + 256 * io_uring_probe_op.Size;
         unsafe
         {
@@ -38,13 +38,13 @@ public class RingProbe : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    public bool HasOp(uint op)
+    public bool HasOp(IoUringOp op)
     {
         unsafe
         {
-            if (op > _probePtr->last_op) return false;
+            if ((byte)op > _probePtr->last_op) return false;
             var ops = io_uring_probe.ops(_probePtr);
-            return (ops[op].flags & IO_URING_OP_SUPPORTED) != 0;
+            return (ops[(byte)op].flags & IO_URING_OP_SUPPORTED) != 0;
         }
     }
 }

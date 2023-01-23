@@ -1,4 +1,5 @@
-﻿using LibUringSharp.Completion;
+﻿using System.Runtime.InteropServices;
+using LibUringSharp.Completion;
 using LibUringSharp.Enums;
 using LibUringSharp.Exceptions;
 using LibUringSharp.Submission;
@@ -14,8 +15,7 @@ public sealed partial class Ring : IDisposable
     private readonly MMapHandle _cqMMapHandle;
     private readonly RingFeature _features;
 
-    private readonly RingSetup _flags;
-
+    private readonly RingSetup _flags = RingSetup.None;
     private readonly FileDescriptor _ringFd;
     private readonly MMapHandle _sqeMMapHandle;
     private readonly MMapHandle _sqMMapHandle;
@@ -23,15 +23,30 @@ public sealed partial class Ring : IDisposable
     private FileDescriptor _enterRingFd;
     private RingInterrupt _intFlags;
 
-    public Ring(uint entries, uint flags)
+    /// <summary>
+    ///     Constructs a new <see cref="Ring" /> with the given number of entries and flags
+    /// </summary>
+    /// <param name="entries">Entries in the ring</param>
+    /// <param name="flags">Flags to pass to io_uring_setup</param>
+    /// <exception cref="PlatformNotSupportedException">Thrown if the current OS is not Linux</exception>
+    /// <exception cref="ArgumentException">Thrown if <paramref name="entries" /> is 0</exception>
+    /// <exception cref="RingInitFailedException">Thrown if the ring failed to initialize</exception>
+    public Ring(uint entries, RingSetup flags = RingSetup.None)
     {
+        // Check if we're on Linux
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            throw new PlatformNotSupportedException("io_uring is only supported on Linux");
+
+        if (entries == 0)
+            throw new ArgumentException("entries must be greater than 0", nameof(entries));
+
         io_uring_params p = default;
-        p.flags = flags;
+        p.flags = (uint)flags;
 
         _ringFd = io_uring_setup(entries, ref p);
 
         if (_ringFd.IsInvalid)
-            throw new Exception("io_uring_setup failed");
+            throw new RingInitFailedException("io_uring_setup failed");
 
         var (sqSize, cqSize) = ComputeRingSize(in p);
         try
@@ -49,6 +64,9 @@ public sealed partial class Ring : IDisposable
         _enterRingFd = _ringFd;
         _features = (RingFeature)p.features;
     }
+
+    public bool IsKernelIoPolling => _flags.HasFlag(RingSetup.KernelIoPolling);
+    public bool IsKernelSubmissionQueuePolling => _flags.HasFlag(RingSetup.KernelSubmissionQueuePolling);
 
     public void Dispose()
     {
@@ -76,61 +94,6 @@ public sealed partial class Ring : IDisposable
         return io_uring_enter(_enterRingFd, 0, 0, flags, ref sigset);
     }
 
-    private static (uint, uint) ComputeRingSize(in io_uring_params p)
-    {
-        var size = (uint)io_uring_cqe.Size;
-        if ((p.features & IORING_SETUP_CQE32) != 0) size += io_uring_cqe.Size;
-
-        var sqSize = p.sq_off.array + p.sq_entries * sizeof(uint);
-        var cqSize = p.cq_off.cqes + p.cq_entries * size;
-
-        if ((p.features & IORING_FEAT_SINGLE_MMAP) == 0) return (sqSize, cqSize);
-
-        if (cqSize > sqSize)
-            sqSize = cqSize;
-        cqSize = sqSize;
-
-        return (sqSize, cqSize);
-    }
-
-    private static SubmissionQueue MapSubmissionQueue(
-        in FileDescriptor ringFd, in io_uring_params p, uint ringSize, RingSetup flags,
-        out MMapHandle sqHandle,
-        out MMapHandle sqeHandle)
-    {
-        sqHandle = MemoryMap(ringSize, MemoryProtection.Read | MemoryProtection.Write,
-            MemoryFlags.Shared | MemoryFlags.Populate, ringFd, (long)IORING_OFF_SQ_RING);
-        if (sqHandle.IsInvalid) throw new MapQueueFailedException(MapQueueFailedException.QueueType.Submission);
-
-        var size = io_uring_sqe.Size;
-        if ((p.flags & IORING_SETUP_SQE128) != 0) size += 64;
-
-        sqeHandle = MemoryMap(size * p.sq_entries, MemoryProtection.Read | MemoryProtection.Write,
-            MemoryFlags.Shared | MemoryFlags.Populate, ringFd, (long)IORING_OFF_SQES);
-        if (sqeHandle.IsInvalid) throw new MapQueueFailedException(MapQueueFailedException.QueueType.Submission);
-
-        return new SubmissionQueue(sqHandle, sqeHandle, ringSize, in p.sq_off, flags);
-    }
-
-    private static CompletionQueue MapCompletionQueue(
-        in FileDescriptor ringFd, in io_uring_params p, uint ringSize, RingSetup flags,
-        in MMapHandle sqHandle,
-        out MMapHandle cqHandle)
-    {
-        if ((p.features & IORING_FEAT_SINGLE_MMAP) != 0)
-        {
-            cqHandle = sqHandle;
-        }
-        else
-        {
-            cqHandle = MemoryMap(ringSize, MemoryProtection.Read | MemoryProtection.Write,
-                MemoryFlags.Shared | MemoryFlags.Populate, ringFd, (long)IORING_OFF_CQ_RING);
-            if (cqHandle.IsInvalid) throw new MapQueueFailedException(MapQueueFailedException.QueueType.Completion);
-        }
-
-        return new CompletionQueue(cqHandle, ringSize, in p.cq_off, flags);
-    }
-
     private unsafe void RegisterRingFd()
     {
         var up = new io_uring_rsrc_update
@@ -148,5 +111,73 @@ public sealed partial class Ring : IDisposable
     internal unsafe int RegisterProbe(io_uring_probe* p, uint nrOps)
     {
         return io_uring_register(_ringFd, IORING_REGISTER_PROBE, p, nrOps);
+    }
+
+    public bool TryGetNextSqe(out Submission.Submission sqe)
+    {
+        return _submissionQueue.TryGetNextSqe(out sqe);
+    }
+
+    internal int Submit(uint submitted, uint waitNr, bool getEvents)
+    {
+        var cqNeedsEnter = getEvents || waitNr != 0 || CqRingNeedsEnter();
+        int ret;
+
+        uint flags = 0;
+        if (SqRingNeedsEnter(submitted, ref flags) || cqNeedsEnter)
+        {
+            if (cqNeedsEnter)
+                flags |= IORING_ENTER_GETEVENTS;
+            if (_intFlags.HasFlag(RingInterrupt.RegRing))
+                flags |= IORING_ENTER_REGISTERED_RING;
+
+            var sigset = default(sigset_t);
+            ret = io_uring_enter(_enterRingFd, submitted, waitNr, flags, ref sigset);
+        }
+        else
+        {
+            ret = (int)submitted;
+        }
+
+        return ret;
+    }
+
+    private bool SqRingNeedsEnter(uint submit, ref uint flags)
+    {
+        if (submit == 0)
+            return false;
+        if (IsKernelSubmissionQueuePolling)
+            return true;
+
+        Thread.MemoryBarrier();
+        unsafe
+        {
+            if ((*_submissionQueue._kFlags & IORING_SQ_NEED_WAKEUP) == 0) return false;
+            flags |= IORING_ENTER_SQ_WAKEUP;
+            return true;
+        }
+    }
+
+    private bool CqRingNeedsEnter()
+    {
+        return IsKernelIoPolling || CqRingNeedsFlush();
+    }
+
+    private bool CqRingNeedsFlush()
+    {
+        unsafe
+        {
+            return (*_submissionQueue._kFlags & (IORING_SQ_CQ_OVERFLOW | IORING_SQ_TASKRUN)) != 0;
+        }
+    }
+
+    public int Submit()
+    {
+        return Submit(_submissionQueue.Flush(), 0, false);
+    }
+
+    public bool TryGetCompletion(out Completion.Completion cqe)
+    {
+        return _completionQueue.TryGetCompletion(out cqe);
     }
 }

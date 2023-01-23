@@ -3,43 +3,58 @@
 [Flags]
 public enum RingSetup : uint
 {
-    /// <summary>
-    ///     io_context is polled
-    /// </summary>
-    IoPoll = 1 << 0,
+    None = 0,
 
     /// <summary>
-    ///     SQ poll thread
+    ///     Perform busy-waiting for an I/O completion,
+    ///     as opposed to getting notifications via an asynchronous IRQ.
     /// </summary>
-    SqPoll = 1 << 1,
+    KernelIoPolling = 1 << 0,
 
     /// <summary>
-    ///     sq_thread_cpu is valid
+    ///     When this flag is specified, a kernel thread is created to perform submission queue polling.
     /// </summary>
-    SqAff = 1 << 2,
+    KernelSubmissionQueuePolling = 1 << 1,
 
     /// <summary>
-    ///     app defines CQ size
+    ///     If this flag is specified, then the poll thread will be bound to the cpu set in the
+    ///     <see cref="Linux.LibC.io_uring_params.sq_thread_cpu" />
+    ///     field of the struct <see cref="Linux.LibC.io_uring_params" />.
+    ///     This flag is only meaningful when <see cref="KernelSubmissionQueuePolling" /> is specified.
     /// </summary>
-    CqSize = 1 << 3,
+    SqPollingThreadCpuAffinity = 1 << 2,
 
     /// <summary>
-    ///     clamp SQ/CQ ring sizes
+    ///     Create the completion queue with <see cref="Linux.LibC.io_uring_params.cq_entries" /> entries
+    ///     in <see cref="Linux.LibC.io_uring_params" />.
+    ///     The value must be greater than entries, and may be rounded up to the next power-of-two.
     /// </summary>
-    Clamp = 1 << 4,
+    CompletionQueueSize = 1 << 3,
 
     /// <summary>
-    ///     attach to existing wq
+    ///     If this flag is specified, and if entries exceeds IORING_MAX_ENTRIES,
+    ///     then entries will be clamped at IORING_MAX_ENTRIES . If the flag IORING_SETUP_SQPOLL is set,
+    ///     and if the value of struct io_uring_params.cq_entries exceeds IORING_MAX_CQ_ENTRIES,
+    ///     then it will be clamped at IORING_MAX_CQ_ENTRIES .
     /// </summary>
-    AttachWq = 1 << 5,
+    ClampQueueRingSize = 1 << 4,
 
     /// <summary>
-    ///     start with ring disabled
+    ///     When set, the io_uring instance being created will share
+    ///     the asynchronous worker thread backend of the specified io_uring ring,
+    ///     rather than create a new separate thread pool.
     /// </summary>
-    RDisabled = 1 << 6,
+    AttachWorkerQueue = 1 << 5,
 
     /// <summary>
-    ///     continue submit on error
+    ///     If this flag is specified, the <see cref="Ring" /> starts in a disabled state.
+    /// </summary>
+    RingDisabled = 1 << 6,
+
+    /// <summary>
+    ///     If the ring is created with this flag,
+    ///     <see cref="Ring" /> will continue submitting requests
+    ///     even if it encounters an error submitting a request.
     /// </summary>
     SubmitAll = 1 << 7,
 
@@ -60,17 +75,18 @@ public enum RingSetup : uint
     TaskRunFlag = 1 << 9,
 
     /// <summary>
-    ///     SQEs are 128 byte
+    ///     If set, <see cref="Ring" /> will use 128-byte SQEs rather than the normal 64-byte sized variant.
     /// </summary>
     Sqe128 = 1 << 10,
 
     /// <summary>
-    ///     CQEs are 32 byte
+    ///     If set, <see cref="Ring" /> will use 32-byte CQEs rather than the normal 16-byte sized variant.
     /// </summary>
     Cqe32 = 1U << 11,
 
     /// <summary>
-    ///     Only one task is allowed to submit requests
+    ///     A hint to the kernel that only a single task (or thread) will submit requests,
+    ///     which is used for internal optimisations.
     /// </summary>
     SingleIssuer = 1U << 12,
 

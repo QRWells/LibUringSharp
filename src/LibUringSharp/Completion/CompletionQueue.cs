@@ -9,21 +9,16 @@ public sealed unsafe class CompletionQueue
     private readonly MMapHandle _ringPtr;
 
     private readonly ulong _ringSize;
+
+    private readonly io_uring_cqe* _cqes;
     private RingSetup _flags;
 
-    /// <summary>
-    ///     A pointer to the underlying <see cref="io_uring_cqe" /> structure.
-    /// </summary>
-    private io_uring_cqe* cqes;
-
-    private uint* kflags;
-    private uint* khead;
-    private uint* koverflow;
-
-    private uint* ktail;
-    private uint ring_entries;
-
-    private uint ring_mask;
+    private uint* _kFlags;
+    internal uint* _kHead;
+    private uint* _kOverflow;
+    private readonly uint* _kTail;
+    private uint _ringEntries;
+    private readonly uint _ringMask;
 
     public CompletionQueue(MMapHandle cqPtr, uint ringSize, in io_cqring_offsets offsets, RingSetup flags)
     {
@@ -31,14 +26,14 @@ public sealed unsafe class CompletionQueue
         _flags = flags;
         _ringSize = ringSize;
 
-        khead = (uint*)(cqPtr.Address + offsets.head);
-        ktail = (uint*)(cqPtr.Address + offsets.tail);
-        ring_mask = *(uint*)(cqPtr.Address + offsets.ring_mask);
-        ring_entries = *(uint*)(cqPtr.Address + offsets.ring_entries);
-        koverflow = (uint*)(cqPtr.Address + offsets.overflow);
-        cqes = (io_uring_cqe*)(cqPtr.Address + offsets.cqes);
+        _kHead = (uint*)(cqPtr.Address + offsets.head);
+        _kTail = (uint*)(cqPtr.Address + offsets.tail);
+        _ringMask = *(uint*)(cqPtr.Address + offsets.ring_mask);
+        _ringEntries = *(uint*)(cqPtr.Address + offsets.ring_entries);
+        _kOverflow = (uint*)(cqPtr.Address + offsets.overflow);
+        _cqes = (io_uring_cqe*)(cqPtr.Address + offsets.cqes);
         if (offsets.flags != 0)
-            kflags = (uint*)(cqPtr.Address + offsets.flags);
+            _kFlags = (uint*)(cqPtr.Address + offsets.flags);
     }
 
     internal void SetNotFork()
@@ -46,8 +41,27 @@ public sealed unsafe class CompletionQueue
         if (_ringPtr.Address == nint.Zero)
             throw new InvalidOperationException("Ring is not initialized");
 
-        var len = _ringSize;
-        var ret = MemAdvise(_ringPtr.Address, len, MADV_DONTFORK);
+        var ret = MemAdvise(_ringPtr.Address, _ringSize, MADV_DONTFORK);
         if (ret < 0) throw new Exception("MemAdvise failed");
+    }
+
+    public bool TryGetCompletion(out Completion cqe)
+    {
+        var head = Volatile.Read(ref *_kHead);
+
+        if (head == *_kTail)
+        {
+            // No Completion Queue Event available
+            cqe = default;
+            return false;
+        }
+
+        var index = head & _ringMask;
+        var internalCqe = &_cqes[index];
+
+        cqe = new Completion(internalCqe->res, internalCqe->user_data, internalCqe->flags);
+
+        Volatile.Write(ref *_kHead, head + 1);
+        return true;
     }
 }

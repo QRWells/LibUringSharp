@@ -1,6 +1,4 @@
-﻿using Linux;
-
-namespace LibUringSharp.Completion;
+﻿namespace LibUringSharp.Completion;
 
 public readonly struct Completion
 {
