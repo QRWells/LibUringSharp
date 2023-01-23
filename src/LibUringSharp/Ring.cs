@@ -176,6 +176,11 @@ public sealed partial class Ring : IDisposable
         return Submit(_submissionQueue.Flush(), 0, false);
     }
 
+    public int SubmitAndWait(uint waitNr)
+    {
+        return Submit(_submissionQueue.Flush(), waitNr, false);
+    }
+
     public bool TryGetCompletion(out Completion.Completion cqe)
     {
         return _completionQueue.TryGetCompletion(out cqe);

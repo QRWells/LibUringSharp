@@ -16,10 +16,10 @@ public class RingTests
 
         Assert.That(ring.TryGetNextSqe(out var sub), Is.True);
         sub.PrepareNop(2023);
-        Assert.Equals(ring.Submit(), 1);
+        Assert.AreEqual(ring.SubmitAndWait(1), 1);
 
         Assert.That(ring.TryGetCompletion(out var com), Is.True);
-        Assert.Equals(0, com.Result);
-        Assert.Equals(2023, com.UserData);
+        Assert.AreEqual(0, com.Result);
+        Assert.AreEqual(2023, com.UserData);
     }
 }

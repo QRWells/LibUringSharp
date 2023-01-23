@@ -59,7 +59,8 @@ public sealed unsafe class SubmissionQueue
 
     internal bool TryGetNextSqe(out Submission sqe)
     {
-        uint head, next = _sqeTail + 1;
+        uint head;
+        var next = unchecked(_sqeTail + 1);
         var shift = 0;
 
         if (_flags.HasFlag(RingSetup.Sqe128))

@@ -1,4 +1,5 @@
-﻿using System.Runtime.InteropServices;
+﻿using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace Linux;
 
@@ -417,17 +418,29 @@ public static partial class LibC
 
     public const int IORING_RESTRICTION_LAST = 4;
 
-    [LibraryImport(Libc)]
-    public static unsafe partial int
-        io_uring_register(int fd, uint opcode, void* arg, uint nr_args);
+    private const int __NR_io_uring_setup = 425;
+    private const int __NR_io_uring_enter = 426;
+    private const int __NR_io_uring_register = 427;
 
-    [LibraryImport(Libc)]
-    public static partial int
-        io_uring_setup(uint entries, ref io_uring_params p);
+    public static unsafe int io_uring_register(int fd, uint opcode, void* arg, uint nr_args)
+    {
+        return (int)syscall(__NR_io_uring_register, fd, opcode, arg, nr_args);
+    }
 
-    [LibraryImport(Libc)]
-    public static partial int
-        io_uring_enter(int fd, uint to_submit, uint min_complete, uint flags, ref sigset_t sig);
+    public unsafe static int io_uring_setup(uint entries, ref io_uring_params p)
+    {
+        return (int)syscall(__NR_io_uring_setup, entries, Unsafe.AsPointer<io_uring_params>(ref p));
+    }
+
+    public static int io_uring_enter(int fd, uint to_submit, uint min_complete, uint flags, ref sigset_t sig)
+    {
+        return io_uring_enter2(fd, to_submit, min_complete, flags, ref sig, 8);
+    }
+
+    public unsafe static int io_uring_enter2(int fd, uint to_submit, uint min_complete, uint flags, ref sigset_t sig, ulong size)
+    {
+        return (int)syscall(__NR_io_uring_enter, fd, to_submit, min_complete, flags, Unsafe.AsPointer<sigset_t>(ref sig), size);
+    }
 
     [StructLayout(LayoutKind.Sequential)]
     public struct io_uring_params
