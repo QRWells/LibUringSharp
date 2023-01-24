@@ -7,6 +7,7 @@ namespace LibUringSharp.Submission;
 
 public sealed unsafe class SubmissionQueue
 {
+    private readonly Ring _parent;
     private readonly uint* _array;
     private readonly RingSetup _flags;
     private readonly uint _ringEntries;
@@ -21,9 +22,10 @@ public sealed unsafe class SubmissionQueue
     private uint _sqeHead;
     private uint _sqeTail;
 
-    public SubmissionQueue(MMapHandle sqPtr, MMapHandle sqePtr, uint ringSize, in io_sqring_offsets offsets,
+    public SubmissionQueue(Ring parent, MMapHandle sqPtr, MMapHandle sqePtr, uint ringSize, in io_sqring_offsets offsets,
         RingSetup flags)
     {
+        _parent = parent;
         _ringPtr = sqPtr;
         _ringSize = ringSize;
 
@@ -81,6 +83,64 @@ public sealed unsafe class SubmissionQueue
 
         sqe = default;
         return false;
+    }
+
+    private bool CqRingNeedsEnter()
+    {
+        return _flags.HasFlag(RingSetup.KernelIoPolling) || CqRingNeedsFlush();
+    }
+
+    private unsafe bool CqRingNeedsFlush()
+    {
+        return (*_kFlags & (IORING_SQ_CQ_OVERFLOW | IORING_SQ_TASKRUN)) != 0;
+    }
+
+    private bool NeedsEnter(uint submit, ref uint flags)
+    {
+        if (submit == 0)
+            return false;
+        if (_flags.HasFlag(RingSetup.KernelSubmissionQueuePolling))
+            return true;
+
+        Thread.MemoryBarrier();
+
+        if ((*_kFlags & IORING_SQ_NEED_WAKEUP) == 0) return false;
+        flags |= IORING_ENTER_SQ_WAKEUP;
+        return true;
+    }
+
+    private int Submit(FileDescriptor enterRingFd, uint submitted, uint waitNr, bool getEvents)
+    {
+        var cqNeedsEnter = getEvents || waitNr != 0 || CqRingNeedsEnter();
+        int ret;
+
+        uint flags = 0;
+        if (NeedsEnter(submitted, ref flags) || cqNeedsEnter)
+        {
+            if (cqNeedsEnter)
+                flags |= IORING_ENTER_GETEVENTS;
+            if (_parent.IsIntteruptRegistered)
+                flags |= IORING_ENTER_REGISTERED_RING;
+
+            var sigset = default(sigset_t);
+            ret = io_uring_enter(enterRingFd, submitted, waitNr, flags, ref sigset);
+        }
+        else
+        {
+            ret = (int)submitted;
+        }
+
+        return ret;
+    }
+
+    internal int Submit(FileDescriptor enterRingFd)
+    {
+        return Submit(enterRingFd, Flush(), 0, false);
+    }
+
+    internal int SubmitAndWait(FileDescriptor enterRingFd, uint waitNr)
+    {
+        return Submit(enterRingFd, Flush(), waitNr, false);
     }
 
     internal uint Flush()

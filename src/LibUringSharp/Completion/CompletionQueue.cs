@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using LibUringSharp.Enums;
 using Linux.Handles;
 using static Linux.LibC;
@@ -6,6 +7,7 @@ namespace LibUringSharp.Completion;
 
 public sealed unsafe class CompletionQueue
 {
+    private readonly Ring _parent;
     private readonly MMapHandle _ringPtr;
 
     private readonly ulong _ringSize;
@@ -20,8 +22,9 @@ public sealed unsafe class CompletionQueue
     private uint _ringEntries;
     private readonly uint _ringMask;
 
-    public CompletionQueue(MMapHandle cqPtr, uint ringSize, in io_cqring_offsets offsets, RingSetup flags)
+    public CompletionQueue(Ring parent, MMapHandle cqPtr, uint ringSize, in io_cqring_offsets offsets, RingSetup flags)
     {
+        _parent = parent;
         _ringPtr = cqPtr;
         _flags = flags;
         _ringSize = ringSize;
@@ -56,12 +59,58 @@ public sealed unsafe class CompletionQueue
             return false;
         }
 
-        var index = head & _ringMask;
-        var internalCqe = &_cqes[index];
+        var internalCqe = &_cqes[head & _ringMask];
 
         cqe = new Completion(internalCqe->res, internalCqe->user_data, internalCqe->flags);
 
         Volatile.Write(ref *_kHead, head + 1);
         return true;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private uint Ready()
+    {
+        return Volatile.Read(ref *_kHead) - *_kTail;
+    }
+
+    internal uint TryGetBatch(Span<Completion> completions)
+    {
+        uint ready;
+        bool overflow_checked = false;
+        int shift = 0;
+
+        if (_flags.HasFlag(RingSetup.Cqe32))
+            shift = 1;
+
+        again:
+        ready = Ready();
+        if (ready != 0)
+        {
+            var head = *_kHead;
+            var mask = _ringMask;
+            int i = 0;
+
+            var count = Math.Min(ready, (uint)completions.Length);
+            var last = head + count;
+            for (; head != last; head++, i++)
+            {
+                var internalCqe = &_cqes[(head & mask) << shift];
+                completions[i] = new Completion(internalCqe->res, internalCqe->user_data, internalCqe->flags);
+            }
+
+            return count;
+        }
+
+        if (overflow_checked)
+            return 0;
+
+        if (_parent.CqRingNeedsFlush())
+        {
+            _parent.GetEvents();
+            overflow_checked = true;
+            goto again;
+        }
+
+        return 0;
     }
 }

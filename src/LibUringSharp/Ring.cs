@@ -51,8 +51,8 @@ public sealed partial class Ring : IDisposable
         var (sqSize, cqSize) = ComputeRingSize(in p);
         try
         {
-            _submissionQueue = MapSubmissionQueue(_ringFd, in p, sqSize, _flags, out _sqMMapHandle, out _sqeMMapHandle);
-            _completionQueue = MapCompletionQueue(_ringFd, in p, cqSize, _flags, in _sqMMapHandle, out _cqMMapHandle);
+            _submissionQueue = MapSubmissionQueue(in p, sqSize, out _sqMMapHandle, out _sqeMMapHandle);
+            _completionQueue = MapCompletionQueue(in p, cqSize, out _cqMMapHandle);
         }
         catch (Exception)
         {
@@ -65,8 +65,63 @@ public sealed partial class Ring : IDisposable
         _features = (RingFeature)p.features;
     }
 
+    /// <summary>
+    ///     Map the submission queue and submission queue entries
+    /// </summary>
+    /// <param name="ringFd"><see cref="FileDescriptor" /> of the <see cref="Ring" /></param>
+    /// <param name="p">parameters of the <see cref="Ring" /></param>
+    /// <param name="ringSize">size of the submission queue ring</param>
+    /// <param name="flags">setup flags of the <see cref="Ring" /></param>
+    /// <param name="sqHandle">out <see cref="MMapHandle" /> of the submission queue</param>
+    /// <param name="sqeHandle">out <see cref="MMapHandle" /> of the submission queue entries</param>
+    /// <returns></returns>
+    /// <exception cref="MapQueueFailedException">Throw if <see cref="LibC.MemMap" /> fails.</exception>
+    private SubmissionQueue MapSubmissionQueue(in io_uring_params p, uint ringSize, out MMapHandle sqHandle, out MMapHandle sqeHandle)
+    {
+        sqHandle = MemoryMap(ringSize, MemoryProtection.Read | MemoryProtection.Write,
+            MemoryFlags.Shared | MemoryFlags.Populate, _ringFd, (long)IORING_OFF_SQ_RING);
+        if (sqHandle.IsInvalid) throw new MapQueueFailedException(MapQueueFailedException.QueueType.Submission);
+
+        var size = io_uring_sqe.Size;
+        if ((p.flags & IORING_SETUP_SQE128) != 0) size += 64;
+
+        sqeHandle = MemoryMap(size * p.sq_entries, MemoryProtection.Read | MemoryProtection.Write,
+            MemoryFlags.Shared | MemoryFlags.Populate, _ringFd, (long)IORING_OFF_SQES);
+        if (sqeHandle.IsInvalid) throw new MapQueueFailedException(MapQueueFailedException.QueueType.Submission);
+
+        return new SubmissionQueue(this, sqHandle, sqeHandle, ringSize, in p.sq_off, _flags);
+    }
+
+    /// <summary>
+    /// </summary>
+    /// <param name="ringFd"></param>
+    /// <param name="p"></param>
+    /// <param name="ringSize"></param>
+    /// <param name="flags"></param>
+    /// <param name="sqHandle"></param>
+    /// <param name="cqHandle"></param>
+    /// <returns></returns>
+    /// <exception cref="MapQueueFailedException">Throw if <see cref="LibC.MemMap" /> fails.</exception>
+    private CompletionQueue MapCompletionQueue(in io_uring_params p, uint ringSize, out MMapHandle cqHandle)
+    {
+        if ((p.features & IORING_FEAT_SINGLE_MMAP) != 0)
+        {
+            cqHandle = _sqMMapHandle;
+        }
+        else
+        {
+            cqHandle = MemoryMap(ringSize, MemoryProtection.Read | MemoryProtection.Write,
+                MemoryFlags.Shared | MemoryFlags.Populate, _ringFd, (long)IORING_OFF_CQ_RING);
+            if (cqHandle.IsInvalid) throw new MapQueueFailedException(MapQueueFailedException.QueueType.Completion);
+        }
+
+        return new CompletionQueue(this, cqHandle, ringSize, in p.cq_off, _flags);
+    }
+
     public bool IsKernelIoPolling => _flags.HasFlag(RingSetup.KernelIoPolling);
     public bool IsKernelSubmissionQueuePolling => _flags.HasFlag(RingSetup.KernelSubmissionQueuePolling);
+
+    internal bool IsIntteruptRegistered => _intFlags.HasFlag(RingInterrupt.RegRing);
 
     public void Dispose()
     {
@@ -86,7 +141,7 @@ public sealed partial class Ring : IDisposable
         _completionQueue.SetNotFork();
     }
 
-    private int GetEvents()
+    public int GetEvents()
     {
         var flags = IORING_ENTER_GETEVENTS;
         if (_intFlags.HasFlag(RingInterrupt.RegRing)) flags |= IORING_ENTER_REGISTERED_RING;
@@ -118,52 +173,12 @@ public sealed partial class Ring : IDisposable
         return _submissionQueue.TryGetNextSqe(out sqe);
     }
 
-    internal int Submit(uint submitted, uint waitNr, bool getEvents)
-    {
-        var cqNeedsEnter = getEvents || waitNr != 0 || CqRingNeedsEnter();
-        int ret;
-
-        uint flags = 0;
-        if (SqRingNeedsEnter(submitted, ref flags) || cqNeedsEnter)
-        {
-            if (cqNeedsEnter)
-                flags |= IORING_ENTER_GETEVENTS;
-            if (_intFlags.HasFlag(RingInterrupt.RegRing))
-                flags |= IORING_ENTER_REGISTERED_RING;
-
-            var sigset = default(sigset_t);
-            ret = io_uring_enter(_enterRingFd, submitted, waitNr, flags, ref sigset);
-        }
-        else
-        {
-            ret = (int)submitted;
-        }
-
-        return ret;
-    }
-
-    private bool SqRingNeedsEnter(uint submit, ref uint flags)
-    {
-        if (submit == 0)
-            return false;
-        if (IsKernelSubmissionQueuePolling)
-            return true;
-
-        Thread.MemoryBarrier();
-        unsafe
-        {
-            if ((*_submissionQueue._kFlags & IORING_SQ_NEED_WAKEUP) == 0) return false;
-            flags |= IORING_ENTER_SQ_WAKEUP;
-            return true;
-        }
-    }
-
-    private bool CqRingNeedsEnter()
+    internal bool CqRingNeedsEnter()
     {
         return IsKernelIoPolling || CqRingNeedsFlush();
     }
 
-    private bool CqRingNeedsFlush()
+    internal bool CqRingNeedsFlush()
     {
         unsafe
         {
@@ -173,16 +188,21 @@ public sealed partial class Ring : IDisposable
 
     public int Submit()
     {
-        return Submit(_submissionQueue.Flush(), 0, false);
+        return _submissionQueue.Submit(_enterRingFd);
     }
 
     public int SubmitAndWait(uint waitNr)
     {
-        return Submit(_submissionQueue.Flush(), waitNr, false);
+        return _submissionQueue.SubmitAndWait(_enterRingFd, waitNr);
     }
 
     public bool TryGetCompletion(out Completion.Completion cqe)
     {
         return _completionQueue.TryGetCompletion(out cqe);
+    }
+
+    public uint TryGetBatch(Span<Completion.Completion> completions)
+    {
+        return _completionQueue.TryGetBatch(completions);
     }
 }
