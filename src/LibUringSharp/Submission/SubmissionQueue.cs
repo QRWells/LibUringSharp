@@ -85,11 +85,13 @@ public sealed unsafe class SubmissionQueue
         return false;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private bool CqRingNeedsEnter()
     {
         return _flags.HasFlag(RingSetup.KernelIoPolling) || CqRingNeedsFlush();
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private unsafe bool CqRingNeedsFlush()
     {
         return (*_kFlags & (IORING_SQ_CQ_OVERFLOW | IORING_SQ_TASKRUN)) != 0;
@@ -99,7 +101,7 @@ public sealed unsafe class SubmissionQueue
     {
         if (submit == 0)
             return false;
-        if (_flags.HasFlag(RingSetup.KernelSubmissionQueuePolling))
+        if (!_flags.HasFlag(RingSetup.KernelSubmissionQueuePolling))
             return true;
 
         Thread.MemoryBarrier();
@@ -109,7 +111,7 @@ public sealed unsafe class SubmissionQueue
         return true;
     }
 
-    private int Submit(FileDescriptor enterRingFd, uint submitted, uint waitNr, bool getEvents)
+    private int SubmitInternal(FileDescriptor enterRingFd, uint submitted, uint waitNr, bool getEvents)
     {
         var cqNeedsEnter = getEvents || waitNr != 0 || CqRingNeedsEnter();
         int ret;
@@ -135,12 +137,12 @@ public sealed unsafe class SubmissionQueue
 
     internal int Submit(FileDescriptor enterRingFd)
     {
-        return Submit(enterRingFd, Flush(), 0, false);
+        return SubmitInternal(enterRingFd, Flush(), 0, false);
     }
 
     internal int SubmitAndWait(FileDescriptor enterRingFd, uint waitNr)
     {
-        return Submit(enterRingFd, Flush(), waitNr, false);
+        return SubmitInternal(enterRingFd, Flush(), waitNr, false);
     }
 
     internal uint Flush()
