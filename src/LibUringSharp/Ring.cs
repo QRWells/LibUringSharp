@@ -178,12 +178,9 @@ public sealed partial class Ring : IDisposable
         return IsKernelIoPolling || CqRingNeedsFlush();
     }
 
-    internal bool CqRingNeedsFlush()
+    internal unsafe bool CqRingNeedsFlush()
     {
-        unsafe
-        {
-            return (*_submissionQueue._kFlags & (IORING_SQ_CQ_OVERFLOW | IORING_SQ_TASKRUN)) != 0;
-        }
+        return (*_submissionQueue._kFlags & (IORING_SQ_CQ_OVERFLOW | IORING_SQ_TASKRUN)) != 0;
     }
 
     public int Submit()

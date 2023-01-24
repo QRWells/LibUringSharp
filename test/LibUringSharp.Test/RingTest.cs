@@ -1,3 +1,5 @@
+using System.Diagnostics;
+
 namespace LibUringSharp.Test;
 
 public class RingTests
@@ -16,7 +18,7 @@ public class RingTests
 
         Assert.That(ring.TryGetNextSqe(out var sub), Is.True);
         sub.PrepareNop(2023);
-        Assert.That(ring.SubmitAndWait(1), Is.EqualTo(1));
+        Assert.That(ring.Submit(), Is.EqualTo(1));
 
         Assert.That(ring.TryGetCompletion(out var com), Is.True);
         Assert.That(com.UserData, Is.EqualTo(2023));
@@ -41,7 +43,7 @@ public class RingTests
             sub.PrepareNop(i);
         }
 
-        ring.SubmitAndWait(4);
+        ring.Submit();
 
         for (ulong i = 0; i < 4; i++)
         {
@@ -69,7 +71,7 @@ public class RingTests
             sub.PrepareNop(i);
         }
 
-        ring.SubmitAndWait(4);
+        ring.Submit();
 
         var coms = new Completion.Completion[4];
 
