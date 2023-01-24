@@ -1,4 +1,4 @@
-﻿using LibUringSharp.Enums;
+using LibUringSharp.Enums;
 using Linux.Handles;
 using static Linux.LibC;
 

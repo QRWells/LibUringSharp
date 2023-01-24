@@ -1,4 +1,4 @@
-﻿using System.Runtime.InteropServices;
+using System.Runtime.InteropServices;
 using LibUringSharp.Completion;
 using LibUringSharp.Enums;
 using LibUringSharp.Exceptions;

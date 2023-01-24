@@ -1,4 +1,4 @@
-﻿namespace LibUringSharp.Exceptions;
+namespace LibUringSharp.Exceptions;
 
 public class MapQueueFailedException : Exception
 {

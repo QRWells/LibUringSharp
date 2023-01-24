@@ -1,4 +1,4 @@
-﻿using System.Runtime.CompilerServices;
+using System.Runtime.CompilerServices;
 using LibUringSharp.Enums;
 using Linux.Handles;
 using static Linux.LibC;

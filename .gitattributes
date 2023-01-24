@@ -1,0 +1,11 @@
+*         text=auto
+# These files are text and should be normalized (convert crlf => lf)
+*.cs      text
+*.xaml    text
+*.csproj  text
+*.sln     text
+*.tt      text
+*.ps1     text
+*.cmd     text
+*.msbuild text
+*.md      text

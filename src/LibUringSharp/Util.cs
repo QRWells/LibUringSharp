@@ -1,4 +1,4 @@
-﻿namespace LibUringSharp;
+namespace LibUringSharp;
 
 public static class Util
 {

@@ -1,4 +1,4 @@
-﻿namespace LibUringSharp.Enums;
+namespace LibUringSharp.Enums;
 
 [Flags]
 public enum RingFeature : uint

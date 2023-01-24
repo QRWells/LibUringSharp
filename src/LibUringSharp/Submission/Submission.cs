@@ -1,4 +1,4 @@
-﻿using LibUringSharp.Enums;
+using LibUringSharp.Enums;
 using static Linux.LibC;
 
 namespace LibUringSharp.Submission;

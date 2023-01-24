@@ -1,4 +1,4 @@
-﻿using LibUringSharp.Completion;
+using LibUringSharp.Completion;
 using LibUringSharp.Enums;
 using LibUringSharp.Exceptions;
 using LibUringSharp.Submission;
