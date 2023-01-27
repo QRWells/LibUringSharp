@@ -202,4 +202,39 @@ public sealed partial class Ring : IDisposable
     {
         return _completionQueue.TryGetBatch(completions);
     }
+
+    public void RegisterEventFd(FileDescriptor fd)
+    {
+        int ret;
+        unsafe
+        {
+            int _fd = fd;
+            ret = io_uring_register(_ringFd, IORING_REGISTER_EVENTFD, &_fd, 1);
+        }
+
+        if (ret < 0) throw new RegisterEventFdFailedException();
+    }
+
+    public void UnregisterEventFd()
+    {
+        int ret;
+        unsafe
+        {
+            ret = io_uring_register(_ringFd, IORING_UNREGISTER_EVENTFD, null, 1);
+        }
+
+        if (ret < 0) throw new RegisterEventFdFailedException();
+    }
+
+    public void RegisterEventFdAsync(FileDescriptor fd)
+    {
+        int ret;
+        unsafe
+        {
+            int _fd = fd;
+            ret = io_uring_register(_ringFd, IORING_REGISTER_EVENTFD_ASYNC, &_fd, 1);
+        }
+
+        if (ret < 0) throw new RegisterEventFdFailedException();
+    }
 }

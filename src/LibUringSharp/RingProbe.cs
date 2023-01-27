@@ -15,7 +15,7 @@ public class RingProbe : IDisposable
         unsafe
         {
             var probe = (io_uring_probe*)Marshal.AllocHGlobal((int)len);
-            Unsafe.InitBlock(probe, 0, len);
+            Unsafe.InitBlockUnaligned(probe, 0, len);
             var ret = ring.RegisterProbe(probe, 256);
             if (ret >= 0)
             {
