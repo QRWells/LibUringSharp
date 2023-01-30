@@ -21,6 +21,11 @@ public sealed unsafe class SubmissionQueue
     private readonly uint _ringMask;
     private uint _sqeHead;
     private uint _sqeTail;
+    private int[] _sqeState;
+    private const int SqeStateFree = 0;
+    private const int SqeStateReserved = 1;
+    private const int SqeStatePrepared = 2;
+    private const int SqeStateSubmitted = 3;
 
     public SubmissionQueue(Ring parent, MMapHandle sqPtr, MMapHandle sqePtr, uint ringSize, in io_sqring_offsets offsets,
         RingSetup flags)
@@ -39,6 +44,8 @@ public sealed unsafe class SubmissionQueue
 
         _sqes = (io_uring_sqe*)sqePtr.Address;
         _flags = flags;
+
+        _sqeState = new int[_ringEntries];
         // Directly map SQ slots to SQEs
         for (var i = 0u; i < _ringEntries; ++i) _array[i] = i;
     }
@@ -74,15 +81,22 @@ public sealed unsafe class SubmissionQueue
 
         if (next - head <= _ringEntries)
         {
-            var internalSqe = &_sqes[(_sqeTail & _ringMask) << shift];
+            var idx = (_sqeTail & _ringMask) << shift;
+            var internalSqe = &_sqes[idx];
             Unsafe.InitBlockUnaligned(internalSqe, 0, (uint)io_uring_sqe.Size);
             _sqeTail = next;
-            sqe = new Submission(internalSqe);
+            sqe = new Submission(this, internalSqe, idx);
+            Volatile.Write(ref _sqeState[idx], SqeStateReserved);
             return true;
         }
 
         sqe = default;
         return false;
+    }
+
+    internal void NotifyPrepared(uint idx)
+    {
+        Volatile.Write(ref _sqeState[idx], SqeStatePrepared);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -150,7 +164,18 @@ public sealed unsafe class SubmissionQueue
         var tail = _sqeTail;
 
         if (_sqeHead == tail) return tail - *_kHead;
-        _sqeHead = tail;
+
+        var head = _sqeHead;
+        for (; head <= tail; ++head)
+        {
+            var idx = head & _ringMask;
+            if (Volatile.Read(ref _sqeState[idx]) < SqeStatePrepared)
+                break;
+            Volatile.Write(ref _sqeState[idx], SqeStateSubmitted);
+        }
+
+        _sqeHead = head;
+
         // Ensure kernel sees the SQE updates before the tail update.
         if (!_flags.HasFlag(RingSetup.KernelSubmissionQueuePolling))
             *_kTail = tail;
