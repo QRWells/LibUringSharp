@@ -94,6 +94,7 @@ public sealed unsafe class SubmissionQueue
         return false;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void NotifyPrepared(uint idx)
     {
         Volatile.Write(ref _sqeState[idx], SqeStatePrepared);
@@ -146,7 +147,23 @@ public sealed unsafe class SubmissionQueue
             ret = (int)submitted;
         }
 
+        Reset(ret);
+
         return ret;
+    }
+
+    private void Reset(int submitted)
+    {
+        var head = _sqeHead;
+
+        while (submitted-- != 0)
+        {
+            var idx = head & _ringMask;
+            _sqeState[idx] = SqeStateFree;
+            head = unchecked(head + 1);
+        }
+
+        _sqeHead = head;
     }
 
     internal int Submit(FileDescriptor enterRingFd)
