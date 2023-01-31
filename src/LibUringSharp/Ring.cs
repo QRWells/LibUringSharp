@@ -15,7 +15,7 @@ public sealed partial class Ring : IDisposable
     private readonly MMapHandle _cqMMapHandle;
     private readonly RingFeature _features;
 
-    private readonly RingSetup _flags = RingSetup.None;
+    private readonly RingSetup _flags;
     private readonly FileDescriptor _ringFd;
     private readonly MMapHandle _sqeMMapHandle;
     private readonly MMapHandle _sqMMapHandle;
@@ -65,18 +65,33 @@ public sealed partial class Ring : IDisposable
         _features = (RingFeature)p.features;
     }
 
+    public bool IsKernelIoPolling => _flags.HasFlag(RingSetup.KernelIoPolling);
+    public bool IsKernelSubmissionQueuePolling => _flags.HasFlag(RingSetup.KernelSubmissionQueuePolling);
+
+    internal bool IsInterruptRegistered => _intFlags.HasFlag(RingInterrupt.RegRing);
+
+    public void Dispose()
+    {
+        _sqMMapHandle.Dispose();
+        _sqeMMapHandle.Dispose();
+        _cqMMapHandle.Dispose();
+        if (_intFlags.HasFlag(RingInterrupt.RegRing))
+            RegisterRingFd();
+        _ringFd.Dispose();
+        _enterRingFd.Dispose();
+    }
+
     /// <summary>
     ///     Map the submission queue and submission queue entries
     /// </summary>
-    /// <param name="ringFd"><see cref="FileDescriptor" /> of the <see cref="Ring" /></param>
     /// <param name="p">parameters of the <see cref="Ring" /></param>
     /// <param name="ringSize">size of the submission queue ring</param>
-    /// <param name="flags">setup flags of the <see cref="Ring" /></param>
     /// <param name="sqHandle">out <see cref="MMapHandle" /> of the submission queue</param>
     /// <param name="sqeHandle">out <see cref="MMapHandle" /> of the submission queue entries</param>
     /// <returns></returns>
-    /// <exception cref="MapQueueFailedException">Throw if <see cref="LibC.MemMap" /> fails.</exception>
-    private SubmissionQueue MapSubmissionQueue(in io_uring_params p, uint ringSize, out MMapHandle sqHandle, out MMapHandle sqeHandle)
+    /// <exception cref="MapQueueFailedException">Throw if <see cref="Linux.LibC.MemMap" /> fails.</exception>
+    private SubmissionQueue MapSubmissionQueue(in io_uring_params p, uint ringSize, out MMapHandle sqHandle,
+        out MMapHandle sqeHandle)
     {
         sqHandle = MemoryMap(ringSize, MemoryProtection.Read | MemoryProtection.Write,
             MemoryFlags.Shared | MemoryFlags.Populate, _ringFd, (long)IORING_OFF_SQ_RING);
@@ -94,14 +109,11 @@ public sealed partial class Ring : IDisposable
 
     /// <summary>
     /// </summary>
-    /// <param name="ringFd"></param>
     /// <param name="p"></param>
     /// <param name="ringSize"></param>
-    /// <param name="flags"></param>
-    /// <param name="sqHandle"></param>
     /// <param name="cqHandle"></param>
     /// <returns></returns>
-    /// <exception cref="MapQueueFailedException">Throw if <see cref="LibC.MemMap" /> fails.</exception>
+    /// <exception cref="MapQueueFailedException">Throw if <see cref="Linux.LibC.MemMap" /> fails.</exception>
     private CompletionQueue MapCompletionQueue(in io_uring_params p, uint ringSize, out MMapHandle cqHandle)
     {
         if ((p.features & IORING_FEAT_SINGLE_MMAP) != 0)
@@ -116,22 +128,6 @@ public sealed partial class Ring : IDisposable
         }
 
         return new CompletionQueue(this, cqHandle, ringSize, in p.cq_off, _flags);
-    }
-
-    public bool IsKernelIoPolling => _flags.HasFlag(RingSetup.KernelIoPolling);
-    public bool IsKernelSubmissionQueuePolling => _flags.HasFlag(RingSetup.KernelSubmissionQueuePolling);
-
-    internal bool IsIntteruptRegistered => _intFlags.HasFlag(RingInterrupt.RegRing);
-
-    public void Dispose()
-    {
-        _sqMMapHandle.Dispose();
-        _sqeMMapHandle.Dispose();
-        _cqMMapHandle.Dispose();
-        if (_intFlags.HasFlag(RingInterrupt.RegRing))
-            RegisterRingFd();
-        _ringFd.Dispose();
-        _enterRingFd.Dispose();
     }
 
     public void SetNotFork()
@@ -208,8 +204,8 @@ public sealed partial class Ring : IDisposable
         int ret;
         unsafe
         {
-            int _fd = fd;
-            ret = io_uring_register(_ringFd, IORING_REGISTER_EVENTFD, &_fd, 1);
+            int fileDescriptor = fd;
+            ret = io_uring_register(_ringFd, IORING_REGISTER_EVENTFD, &fileDescriptor, 1);
         }
 
         if (ret < 0) throw new RegisterEventFdFailedException();
@@ -231,8 +227,8 @@ public sealed partial class Ring : IDisposable
         int ret;
         unsafe
         {
-            int _fd = fd;
-            ret = io_uring_register(_ringFd, IORING_REGISTER_EVENTFD_ASYNC, &_fd, 1);
+            int fileDescriptor = fd;
+            ret = io_uring_register(_ringFd, IORING_REGISTER_EVENTFD_ASYNC, &fileDescriptor, 1);
         }
 
         if (ret < 0) throw new RegisterEventFdFailedException();

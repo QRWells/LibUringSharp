@@ -7,20 +7,19 @@ namespace LibUringSharp.Completion;
 
 public sealed unsafe class CompletionQueue
 {
+    private readonly io_uring_cqe* _cqes;
+    private readonly RingSetup _flags;
+    private readonly uint* _kHead;
+    private readonly uint* _kTail;
     private readonly Ring _parent;
+    private readonly uint _ringMask;
     private readonly MMapHandle _ringPtr;
 
     private readonly ulong _ringSize;
 
-    private readonly io_uring_cqe* _cqes;
-    private RingSetup _flags;
-
     private uint* _kFlags;
-    internal uint* _kHead;
     private uint* _kOverflow;
-    private readonly uint* _kTail;
     private uint _ringEntries;
-    private readonly uint _ringMask;
 
     public CompletionQueue(Ring parent, MMapHandle cqPtr, uint ringSize, in io_cqring_offsets offsets, RingSetup flags)
     {
@@ -75,42 +74,36 @@ public sealed unsafe class CompletionQueue
 
     internal uint TryGetBatch(Span<Completion> completions)
     {
-        uint ready;
-        bool overflow_checked = false;
-        int shift = 0;
+        var overflowChecked = false;
+        var shift = 0;
 
         if (_flags.HasFlag(RingSetup.Cqe32))
             shift = 1;
 
         again:
-        ready = Ready();
+        var ready = Ready();
         if (ready != 0)
         {
             var head = *_kHead;
-            var mask = _ringMask;
-            int i = 0;
+            var i = 0;
 
             var count = Math.Min(ready, (uint)completions.Length);
             var last = head + count;
             for (; head != last; head++, i++)
             {
-                var internalCqe = &_cqes[(head & mask) << shift];
+                var internalCqe = &_cqes[(head & _ringMask) << shift];
                 completions[i] = new Completion(internalCqe->res, internalCqe->user_data, internalCqe->flags);
             }
 
             return count;
         }
 
-        if (overflow_checked)
+        if (overflowChecked)
             return 0;
 
-        if (_parent.CqRingNeedsFlush())
-        {
-            _parent.GetEvents();
-            overflow_checked = true;
-            goto again;
-        }
-
-        return 0;
+        if (!_parent.CqRingNeedsFlush()) return 0;
+        _parent.GetEvents();
+        overflowChecked = true;
+        goto again;
     }
 }

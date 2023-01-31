@@ -427,9 +427,9 @@ public static partial class LibC
         return (int)syscall(__NR_io_uring_register, fd, opcode, arg, nr_args);
     }
 
-    public unsafe static int io_uring_setup(uint entries, ref io_uring_params p)
+    public static unsafe int io_uring_setup(uint entries, ref io_uring_params p)
     {
-        return (int)syscall(__NR_io_uring_setup, entries, Unsafe.AsPointer<io_uring_params>(ref p));
+        return (int)syscall(__NR_io_uring_setup, entries, Unsafe.AsPointer(ref p));
     }
 
     public static int io_uring_enter(int fd, uint to_submit, uint min_complete, uint flags, ref sigset_t sig)
@@ -437,9 +437,10 @@ public static partial class LibC
         return io_uring_enter2(fd, to_submit, min_complete, flags, ref sig, 8);
     }
 
-    public unsafe static int io_uring_enter2(int fd, uint to_submit, uint min_complete, uint flags, ref sigset_t sig, ulong size)
+    public static unsafe int io_uring_enter2(int fd, uint to_submit, uint min_complete, uint flags, ref sigset_t sig,
+        ulong size)
     {
-        return (int)syscall(__NR_io_uring_enter, fd, to_submit, min_complete, flags, Unsafe.AsPointer<sigset_t>(ref sig), size);
+        return (int)syscall(__NR_io_uring_enter, fd, to_submit, min_complete, flags, Unsafe.AsPointer(ref sig), size);
     }
 
     [StructLayout(LayoutKind.Sequential)]

@@ -1,5 +1,3 @@
-using System.Diagnostics;
-
 namespace LibUringSharp.Test;
 
 public class RingTests
@@ -7,7 +5,7 @@ public class RingTests
     [Test]
     public void TestSubmitOne()
     {
-        var ring = new Ring(4);
+        using var ring = new Ring(4);
 
         Assert.That(ring, Is.Not.Null);
         Assert.Multiple(() =>
@@ -18,17 +16,20 @@ public class RingTests
 
         Assert.That(ring.TryGetNextSqe(out var sub), Is.True);
         sub.PrepareNop(2023);
-        Assert.That(ring.Submit(), Is.EqualTo(1));
+        Assert.Multiple(() =>
+        {
+            Assert.That(ring.Submit(), Is.EqualTo(1));
 
-        Assert.That(ring.TryGetCompletion(out var com), Is.True);
-        Assert.That(com.UserData, Is.EqualTo(2023));
-        Assert.That(com.Result, Is.EqualTo(0));
+            Assert.That(ring.TryGetCompletion(out var com), Is.True);
+            Assert.That(com.UserData, Is.EqualTo(2023));
+            Assert.That(com.Result, Is.EqualTo(0));
+        });
     }
 
     [Test]
     public void TestSubmitMore()
     {
-        var ring = new Ring(4);
+        using var ring = new Ring(4);
 
         Assert.That(ring, Is.Not.Null);
         Assert.Multiple(() =>
@@ -56,7 +57,7 @@ public class RingTests
     [Test]
     public void TestGetBatch()
     {
-        var ring = new Ring(4);
+        using var ring = new Ring(4);
 
         Assert.That(ring, Is.Not.Null);
         Assert.Multiple(() =>
@@ -73,14 +74,17 @@ public class RingTests
 
         ring.Submit();
 
-        var coms = new Completion.Completion[4];
+        var completions = new Completion.Completion[4];
 
-        Assert.That(ring.TryGetBatch(coms), Is.EqualTo(4));
+        Assert.That(ring.TryGetBatch(completions), Is.EqualTo(4));
 
         for (ulong i = 0; i < 4; i++)
         {
-            Assert.That(coms[i].UserData, Is.EqualTo(i));
-            Assert.That(coms[i].Result, Is.EqualTo(0));
+            Assert.Multiple(() =>
+            {
+                Assert.That(completions[i].UserData, Is.EqualTo(i));
+                Assert.That(completions[i].Result, Is.EqualTo(0));
+            });
         }
     }
 }

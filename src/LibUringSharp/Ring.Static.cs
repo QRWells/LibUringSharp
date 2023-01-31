@@ -1,9 +1,4 @@
-using LibUringSharp.Completion;
 using LibUringSharp.Enums;
-using LibUringSharp.Exceptions;
-using LibUringSharp.Submission;
-using Linux;
-using Linux.Handles;
 using static Linux.LibC;
 
 namespace LibUringSharp;

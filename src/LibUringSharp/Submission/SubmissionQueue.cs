@@ -7,27 +7,28 @@ namespace LibUringSharp.Submission;
 
 public sealed unsafe class SubmissionQueue
 {
-    private readonly Ring _parent;
+    private const int SqeStateFree = 0;
+    private const int SqeStateReserved = 1;
+    private const int SqeStatePrepared = 2;
+    private const int SqeStateSubmitted = 3;
     private readonly uint* _array;
     private readonly RingSetup _flags;
+    private readonly uint* _kHead;
+    private readonly uint* _kTail;
+    private readonly Ring _parent;
     private readonly uint _ringEntries;
+    private readonly uint _ringMask;
     private readonly MMapHandle _ringPtr;
     private readonly ulong _ringSize;
     private readonly io_uring_sqe* _sqes;
     private uint* _kDropped;
     internal uint* _kFlags;
-    private readonly uint* _kHead;
-    private readonly uint* _kTail;
-    private readonly uint _ringMask;
     private uint _sqeHead;
+    private readonly int[] _sqeState;
     private uint _sqeTail;
-    private int[] _sqeState;
-    private const int SqeStateFree = 0;
-    private const int SqeStateReserved = 1;
-    private const int SqeStatePrepared = 2;
-    private const int SqeStateSubmitted = 3;
 
-    public SubmissionQueue(Ring parent, MMapHandle sqPtr, MMapHandle sqePtr, uint ringSize, in io_sqring_offsets offsets,
+    public SubmissionQueue(Ring parent, MMapHandle sqPtr, MMapHandle sqePtr, uint ringSize,
+        in io_sqring_offsets offsets,
         RingSetup flags)
     {
         _parent = parent;
@@ -94,6 +95,7 @@ public sealed unsafe class SubmissionQueue
         return false;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void NotifyPrepared(uint idx)
     {
         Volatile.Write(ref _sqeState[idx], SqeStatePrepared);
@@ -106,7 +108,7 @@ public sealed unsafe class SubmissionQueue
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private unsafe bool CqRingNeedsFlush()
+    private bool CqRingNeedsFlush()
     {
         return (*_kFlags & (IORING_SQ_CQ_OVERFLOW | IORING_SQ_TASKRUN)) != 0;
     }
@@ -135,7 +137,7 @@ public sealed unsafe class SubmissionQueue
         {
             if (cqNeedsEnter)
                 flags |= IORING_ENTER_GETEVENTS;
-            if (_parent.IsIntteruptRegistered)
+            if (_parent.IsInterruptRegistered)
                 flags |= IORING_ENTER_REGISTERED_RING;
 
             var sigset = default(sigset_t);
@@ -146,7 +148,23 @@ public sealed unsafe class SubmissionQueue
             ret = (int)submitted;
         }
 
+        Reset(ret);
+
         return ret;
+    }
+
+    private void Reset(int submitted)
+    {
+        var head = _sqeHead;
+
+        while (submitted-- != 0)
+        {
+            var idx = head & _ringMask;
+            _sqeState[idx] = SqeStateFree;
+            head = unchecked(head + 1);
+        }
+
+        _sqeHead = head;
     }
 
     internal int Submit(FileDescriptor enterRingFd)
@@ -159,7 +177,7 @@ public sealed unsafe class SubmissionQueue
         return SubmitInternal(enterRingFd, Flush(), waitNr, false);
     }
 
-    internal uint Flush()
+    private uint Flush()
     {
         var tail = _sqeTail;
 
