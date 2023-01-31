@@ -166,13 +166,15 @@ public sealed unsafe class SubmissionQueue
         if (_sqeHead == tail) return tail - *_kHead;
 
         var head = _sqeHead;
-        for (; head <= tail; ++head)
+
+        do
         {
             var idx = head & _ringMask;
             if (Volatile.Read(ref _sqeState[idx]) < SqeStatePrepared)
                 break;
             Volatile.Write(ref _sqeState[idx], SqeStateSubmitted);
-        }
+            head++;
+        } while (head < tail);
 
         _sqeHead = head;
 
