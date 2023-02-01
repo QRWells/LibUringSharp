@@ -605,6 +605,8 @@ public static partial class LibC
         public ulong resv2;
         public ulong data;
         public ulong tags;
+
+        public const uint Size = 32;
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -616,25 +618,27 @@ public static partial class LibC
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    private struct io_uring_rsrc_update2
+    public struct io_uring_rsrc_update2
     {
-        private readonly uint offset;
-        private readonly uint resv;
-        private readonly ulong data;
-        private readonly ulong tags;
-        private readonly uint nr;
-        private readonly uint resv2;
+        public uint offset;
+        public uint resv;
+        public ulong data;
+        public ulong tags;
+        public uint nr;
+        public uint resv2;
+
+        public const uint Size = 32;
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    private struct io_uring_notification_slot
+    public struct io_uring_notification_slot
     {
         private readonly ulong tag;
         private unsafe fixed ulong resv[3];
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    private struct io_uring_notification_register
+    public struct io_uring_notification_register
     {
         private readonly uint nr_slots;
         private readonly uint resv;
@@ -683,27 +687,27 @@ public static partial class LibC
     }
 
     [StructLayout(LayoutKind.Explicit)]
-    private struct io_uring_restriction
+    public struct io_uring_restriction
     {
-        [FieldOffset(0)] private readonly ushort opcode;
+        [FieldOffset(0)] public readonly ushort opcode;
 
         /// <summary>
         ///     IORING_RESTRICTION_REGISTER_OP
         /// </summary>
-        [FieldOffset(2)] private readonly byte register_op;
+        [FieldOffset(2)] public readonly byte register_op;
 
         /// <summary>
         ///     IORING_RESTRICTION_SQE_OP
         /// </summary>
-        [FieldOffset(2)] private readonly byte sqe_op;
+        [FieldOffset(2)] public readonly byte sqe_op;
 
         /// <summary>
         ///     IORING_RESTRICTION_SQE_FLAGS_*
         /// </summary>
-        [FieldOffset(2)] private readonly byte sqe_flags;
+        [FieldOffset(2)] public readonly byte sqe_flags;
 
-        [FieldOffset(3)] private readonly byte resv;
-        [FieldOffset(4)] private unsafe fixed uint resv2[3];
+        [FieldOffset(3)] public readonly byte resv;
+        [FieldOffset(4)] public unsafe fixed uint resv2[3];
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -716,7 +720,7 @@ public static partial class LibC
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    private struct io_uring_buf_ring
+    public struct io_uring_buf_ring
     {
         private readonly ulong resv1;
         private readonly uint resv2;
@@ -733,17 +737,17 @@ public static partial class LibC
     ///     argument for IORING_(UN)REGISTER_PBUF_RING
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    private struct io_uring_buf_reg
+    public struct io_uring_buf_reg
     {
-        private readonly ulong ring_addr;
-        private readonly uint ring_entries;
-        private readonly ushort bgid;
-        private readonly ushort pad;
-        private unsafe fixed ulong resv[3];
+        public ulong ring_addr;
+        public uint ring_entries;
+        public ushort bgid;
+        public ushort pad;
+        public unsafe fixed ulong resv[3];
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    private struct io_uring_getevents_arg
+    public struct io_uring_getevents_arg
     {
         private readonly ulong sigmask;
         private readonly uint sigmask_sz;
@@ -755,7 +759,7 @@ public static partial class LibC
     ///     Argument for IORING_REGISTER_SYNC_CANCEL
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    private struct io_uring_sync_cancel_reg
+    public struct io_uring_sync_cancel_reg
     {
         private readonly ulong addr;
         private readonly int fd;
@@ -771,15 +775,15 @@ public static partial class LibC
     ///     The range is specified as [off, off + len)
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
-    private struct io_uring_file_index_range
+    public struct io_uring_file_index_range
     {
-        private readonly uint off;
-        private readonly uint len;
-        private readonly ulong resv;
+        public uint off;
+        public uint len;
+        public ulong resv;
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    private struct io_uring_recvmsg_out
+    public struct io_uring_recvmsg_out
     {
         private readonly uint namelen;
         private readonly uint controllen;

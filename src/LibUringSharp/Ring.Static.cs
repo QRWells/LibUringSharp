@@ -91,4 +91,19 @@ public sealed partial class Ring
 
         return (sqSize, cqSize);
     }
+
+    private static unsafe int IncreaseResourceLimitFile(uint nr)
+    {
+        rlimit rLimit;
+
+        var ret = GetRLimit(ResourceLimit.Files, &rLimit);
+        if (ret < 0)
+            return ret;
+
+        if (rLimit.rlim_cur >= nr) return 0;
+        rLimit.rlim_cur += nr;
+        SetRLimit(ResourceLimit.Files, &rLimit);
+
+        return 0;
+    }
 }

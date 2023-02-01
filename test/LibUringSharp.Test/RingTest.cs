@@ -79,12 +79,10 @@ public class RingTests
         Assert.That(ring.TryGetBatch(completions), Is.EqualTo(4));
 
         for (ulong i = 0; i < 4; i++)
-        {
             Assert.Multiple(() =>
             {
                 Assert.That(completions[i].UserData, Is.EqualTo(i));
                 Assert.That(completions[i].Result, Is.EqualTo(0));
             });
-        }
     }
 }

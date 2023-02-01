@@ -125,6 +125,6 @@ public static partial class LibC
         public nint iov_base;
 
         // size_t iov_len;
-        public nuint iov_len;
+        public ulong iov_len;
     }
 }

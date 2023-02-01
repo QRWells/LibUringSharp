@@ -21,10 +21,10 @@ public sealed unsafe class SubmissionQueue
     private readonly MMapHandle _ringPtr;
     private readonly ulong _ringSize;
     private readonly io_uring_sqe* _sqes;
+    private readonly int[] _sqeState;
     private uint* _kDropped;
     internal uint* _kFlags;
     private uint _sqeHead;
-    private readonly int[] _sqeState;
     private uint _sqeTail;
 
     public SubmissionQueue(Ring parent, MMapHandle sqPtr, MMapHandle sqePtr, uint ringSize,
