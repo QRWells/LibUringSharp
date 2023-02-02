@@ -77,7 +77,7 @@ public static partial class LibC
             _value = value & (OwnerMask | GroupMask | OtherMask);
         }
 
-        public FilePermissions() : this(0755)
+        public FilePermissions() : this(0x1ed)
         {
         }
 
@@ -90,17 +90,17 @@ public static partial class LibC
         public Permission Group => (Permission)((_value & GroupMask) >> 3);
         public Permission Other => (Permission)((_value & OtherMask) >> 0);
 
-        public bool OwnerCanRead => (Owner & Permission.Read) == Permission.Read;
-        public bool OwnerCanWrite => (Owner & Permission.Write) == Permission.Write;
-        public bool OwnerCanExecute => (Owner & Permission.Execute) == Permission.Execute;
+        public bool OwnerCanRead => Owner.HasFlag(Permission.Read);
+        public bool OwnerCanWrite => Owner.HasFlag(Permission.Write);
+        public bool OwnerCanExecute => Owner.HasFlag(Permission.Execute);
 
-        public bool GroupCanRead => (Group & Permission.Read) == Permission.Read;
-        public bool GroupCanWrite => (Group & Permission.Write) == Permission.Write;
-        public bool GroupCanExecute => (Group & Permission.Execute) == Permission.Execute;
+        public bool GroupCanRead => Group.HasFlag(Permission.Read);
+        public bool GroupCanWrite => Group.HasFlag(Permission.Write);
+        public bool GroupCanExecute => Group.HasFlag(Permission.Execute);
 
-        public bool OtherCanRead => (Other & Permission.Read) == Permission.Read;
-        public bool OtherCanWrite => (Other & Permission.Write) == Permission.Write;
-        public bool OtherCanExecute => (Other & Permission.Execute) == Permission.Execute;
+        public bool OtherCanRead => Other.HasFlag(Permission.Read);
+        public bool OtherCanWrite => Other.HasFlag(Permission.Write);
+        public bool OtherCanExecute => Other.HasFlag(Permission.Execute);
 
         public static FilePermissions FromInt32(int value)
         {
@@ -115,6 +115,11 @@ public static partial class LibC
         public static implicit operator FilePermissions(int value)
         {
             return new FilePermissions(value);
+        }
+
+        public override string ToString()
+        {
+            return $"Owner: {Owner}, Group: {Group}, Other: {Other}";
         }
     }
 

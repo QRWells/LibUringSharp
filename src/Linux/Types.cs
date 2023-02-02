@@ -66,14 +66,14 @@ public static partial class LibC
     [StructLayout(LayoutKind.Explicit)]
     public struct sigset_t
     {
-        [FieldOffset(0)] private readonly ulong __align;
-        [FieldOffset(0)] private unsafe fixed byte __data[128];
+        [FieldOffset(0)] public readonly ulong __align;
+        [FieldOffset(0)] public unsafe fixed byte __data[128];
     }
 
-    private struct __kernel_timespec
+    public struct __kernel_timespec
     {
-        private long tv_sec; /* seconds */
-        private long tv_nsec; /* nanoseconds */
+        public long tv_sec; /* seconds */
+        public long tv_nsec; /* nanoseconds */
     }
 
     public struct timespec

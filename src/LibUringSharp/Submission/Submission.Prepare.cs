@@ -37,6 +37,7 @@ public readonly unsafe partial struct Submission
         fixed (iovec* ioVectorsPtr = ioVectors)
         {
             PrepareReadWrite(IoUringOp.ReadV, fd, ioVectorsPtr, (uint)ioVectors.Length, offset);
+            _queue.NotifyPrepared(_index);
         }
     }
 
@@ -64,6 +65,7 @@ public readonly unsafe partial struct Submission
         fixed (iovec* ioVectorsPtr = ioVectors)
         {
             PrepareReadWrite(IoUringOp.WriteV, fd, ioVectorsPtr, (uint)ioVectors.Length, offset);
+            _queue.NotifyPrepared(_index);
         }
     }
 
@@ -94,6 +96,7 @@ public readonly unsafe partial struct Submission
     {
         PrepareReadWrite(IoUringOp.ReceiveMsg, fd, msg, 1, 0);
         _sqe->msg_flags = flags;
+        _queue.NotifyPrepared(_index);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -108,6 +111,7 @@ public readonly unsafe partial struct Submission
     {
         PrepareReadWrite(IoUringOp.SendMsg, fd, msg, 1, 0);
         _sqe->msg_flags = flags;
+        _queue.NotifyPrepared(_index);
     }
 
     #endregion
@@ -125,6 +129,7 @@ public readonly unsafe partial struct Submission
     {
         PrepareReadWrite(IoUringOp.PollAdd, fd, null, 0, 0);
         _sqe->poll32_events = PreparePollMask(pollMask);
+        _queue.NotifyPrepared(_index);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -139,6 +144,7 @@ public readonly unsafe partial struct Submission
     {
         PrepareReadWrite(IoUringOp.PollRemove, -1, null, 0, 0);
         _sqe->addr = userData;
+        _queue.NotifyPrepared(_index);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -148,6 +154,7 @@ public readonly unsafe partial struct Submission
             newUserData);
         _sqe->addr = oldUserData;
         _sqe->poll32_events = PreparePollMask(pollMask);
+        _queue.NotifyPrepared(_index);
     }
 
     #endregion
@@ -157,6 +164,7 @@ public readonly unsafe partial struct Submission
     {
         PrepareReadWrite(IoUringOp.FSync, fd, null, 0, 0);
         _sqe->fsync_flags = fsyncFlags;
+        _queue.NotifyPrepared(_index);
     }
 
     #region File I/O
@@ -175,9 +183,9 @@ public readonly unsafe partial struct Submission
         fixed (char* pathPtr = path)
         {
             PrepareReadWrite(IoUringOp.OpenAt, dfd, pathPtr, mode, 0);
+            _sqe->open_flags = (uint)flags;
+            _queue.NotifyPrepared(_index);
         }
-
-        _sqe->open_flags = (uint)flags;
     }
 
     /// <summary>
@@ -199,6 +207,7 @@ public readonly unsafe partial struct Submission
     public void PrepareClose(FileDescriptor fd)
     {
         PrepareReadWrite(IoUringOp.Close, fd, null, 0, 0);
+        _queue.NotifyPrepared(_index);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -214,6 +223,7 @@ public readonly unsafe partial struct Submission
         fixed (void* bufPtr = buf)
         {
             PrepareReadWrite(IoUringOp.Read, fd, bufPtr, (uint)buf.Length, offset);
+            _queue.NotifyPrepared(_index);
         }
     }
 
@@ -223,11 +233,13 @@ public readonly unsafe partial struct Submission
         fixed (void* bufPtr = buf)
         {
             PrepareReadWrite(IoUringOp.Write, fd, bufPtr, (uint)buf.Length, offset);
+            _queue.NotifyPrepared(_index);
         }
     }
 
     #endregion
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void PrepareNop(ulong userData = 0, SqeOption options = SqeOption.None, ushort personality = 0)
     {
         unchecked
@@ -241,4 +253,79 @@ public readonly unsafe partial struct Submission
 
         _queue.NotifyPrepared(_index);
     }
+
+    #region Timeout
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void PrepareTimeout(ref __kernel_timespec ts, uint count, uint flags)
+    {
+        fixed (__kernel_timespec* tsPtr = &ts)
+        {
+            PrepareReadWrite(IoUringOp.Timeout, -1, tsPtr, 1, count);
+            _sqe->timeout_flags = flags;
+            _queue.NotifyPrepared(_index);
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void PrepareTimeoutRemove(ulong user_data, uint flags)
+    {
+        PrepareReadWrite(IoUringOp.TimeoutRemove, -1, null, 0, 0);
+        _sqe->addr = user_data;
+        _sqe->timeout_flags = flags;
+        _queue.NotifyPrepared(_index);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void PrepareTimeoutUpdate(ref __kernel_timespec ts, ulong user_data, uint flags)
+    {
+        fixed (__kernel_timespec* tsPtr = &ts)
+        {
+            PrepareReadWrite(IoUringOp.TimeoutRemove, -1, null, 0, (ulong)tsPtr);
+            _sqe->addr = user_data;
+            _sqe->timeout_flags = flags | IORING_TIMEOUT_UPDATE;
+            _queue.NotifyPrepared(_index);
+        }
+    }
+
+    #endregion
+
+    #region Network
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void PrepareAccept(int fd, ref sockaddr addr, ref uint addrlen, int flags)
+    {
+        fixed (sockaddr* addrPtr = &addr)
+        {
+            PrepareReadWrite(IoUringOp.Accept, fd, addrPtr, 0, (ulong)addrlen);
+            _sqe->accept_flags = (uint)flags;
+            _queue.NotifyPrepared(_index);
+        }
+    }
+
+    /* accept directly into the fixed file table */
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void PrepareAcceptDirect(int fd, ref sockaddr addr, ref uint addrlen, int flags, uint file_index)
+    {
+        PrepareAccept(fd, ref addr, ref addrlen, flags);
+        SetTargetFixedFile(file_index);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void PrepareMultishotAccept(int fd, ref sockaddr addr, ref uint addrlen, int flags)
+    {
+
+        PrepareAccept(fd, ref addr, ref addrlen, flags);
+        _sqe->ioprio |= (ushort)IORING_ACCEPT_MULTISHOT;
+    }
+
+    /* multishot accept directly into the fixed file table */
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void PrepareMultishotAcceptDirect(int fd, ref sockaddr addr, ref uint addrlen, int flags)
+    {
+        PrepareMultishotAccept(fd, ref addr, ref addrlen, flags);
+        SetTargetFixedFile(IORING_FILE_INDEX_ALLOC - 1);
+    }
+
+    #endregion
 }
