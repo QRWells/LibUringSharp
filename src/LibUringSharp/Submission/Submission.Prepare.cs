@@ -8,7 +8,7 @@ namespace LibUringSharp.Submission;
 
 public readonly unsafe partial struct Submission
 {
-    #region Read/Write
+    #region I/O
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void PrepareReadWrite(IoUringOp op, int fd, void* addr, uint len, ulong offset)
@@ -87,6 +87,74 @@ public readonly unsafe partial struct Submission
         }
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void SetTargetFixedFile(uint fileIndex)
+    {
+        // 0 means no fixed files, indexes should be encoded as "index + 1"
+        _sqe->file_index = fileIndex + 1;
+    }
+
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void PrepareOpenAt(int dfd, string path, int flags, uint mode)
+    {
+        fixed (char* pathPtr = path)
+        {
+            PrepareReadWrite(IoUringOp.OpenAt, dfd, pathPtr, mode, 0);
+            _sqe->open_flags = (uint)flags;
+            _queue.NotifyPrepared(_index);
+        }
+    }
+
+    /// <summary>
+    ///     open directly into the fixed file table
+    /// </summary>
+    /// <param name="dfd"></param>
+    /// <param name="path"></param>
+    /// <param name="flags"></param>
+    /// <param name="mode"></param>
+    /// <param name="fileIndex"></param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void PrepareOpenAtDirect(int dfd, string path, int flags, uint mode, uint fileIndex)
+    {
+        PrepareOpenAt(dfd, path, flags, mode);
+        SetTargetFixedFile(fileIndex);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void PrepareClose(FileDescriptor fd)
+    {
+        PrepareReadWrite(IoUringOp.Close, fd, null, 0, 0);
+        _queue.NotifyPrepared(_index);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void PrepareCloseDirect(uint fileIndex)
+    {
+        PrepareClose(0);
+        SetTargetFixedFile(fileIndex);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void PrepareRead(FileDescriptor fd, Span<byte> buf, ulong offset)
+    {
+        fixed (void* bufPtr = buf)
+        {
+            PrepareReadWrite(IoUringOp.Read, fd, bufPtr, (uint)buf.Length, offset);
+            _queue.NotifyPrepared(_index);
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void PrepareWrite(FileDescriptor fd, Span<byte> buf, ulong offset)
+    {
+        fixed (void* bufPtr = buf)
+        {
+            PrepareReadWrite(IoUringOp.Write, fd, bufPtr, (uint)buf.Length, offset);
+            _queue.NotifyPrepared(_index);
+        }
+    }
+
     #endregion
 
     #region Send/Receive
@@ -159,101 +227,6 @@ public readonly unsafe partial struct Submission
 
     #endregion
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void PrepareFSync(FileDescriptor fd, uint fsyncFlags)
-    {
-        PrepareReadWrite(IoUringOp.FSync, fd, null, 0, 0);
-        _sqe->fsync_flags = fsyncFlags;
-        _queue.NotifyPrepared(_index);
-    }
-
-    #region File I/O
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void SetTargetFixedFile(uint fileIndex)
-    {
-        // 0 means no fixed files, indexes should be encoded as "index + 1"
-        _sqe->file_index = fileIndex + 1;
-    }
-
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void PrepareOpenAt(int dfd, string path, int flags, uint mode)
-    {
-        fixed (char* pathPtr = path)
-        {
-            PrepareReadWrite(IoUringOp.OpenAt, dfd, pathPtr, mode, 0);
-            _sqe->open_flags = (uint)flags;
-            _queue.NotifyPrepared(_index);
-        }
-    }
-
-    /// <summary>
-    ///     open directly into the fixed file table
-    /// </summary>
-    /// <param name="dfd"></param>
-    /// <param name="path"></param>
-    /// <param name="flags"></param>
-    /// <param name="mode"></param>
-    /// <param name="fileIndex"></param>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void PrepareOpenAtDirect(int dfd, string path, int flags, uint mode, uint fileIndex)
-    {
-        PrepareOpenAt(dfd, path, flags, mode);
-        SetTargetFixedFile(fileIndex);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void PrepareClose(FileDescriptor fd)
-    {
-        PrepareReadWrite(IoUringOp.Close, fd, null, 0, 0);
-        _queue.NotifyPrepared(_index);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void PrepareCloseDirect(uint fileIndex)
-    {
-        PrepareClose(0);
-        SetTargetFixedFile(fileIndex);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void PrepareRead(FileDescriptor fd, Span<byte> buf, ulong offset)
-    {
-        fixed (void* bufPtr = buf)
-        {
-            PrepareReadWrite(IoUringOp.Read, fd, bufPtr, (uint)buf.Length, offset);
-            _queue.NotifyPrepared(_index);
-        }
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void PrepareWrite(FileDescriptor fd, Span<byte> buf, ulong offset)
-    {
-        fixed (void* bufPtr = buf)
-        {
-            PrepareReadWrite(IoUringOp.Write, fd, bufPtr, (uint)buf.Length, offset);
-            _queue.NotifyPrepared(_index);
-        }
-    }
-
-    #endregion
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void PrepareNop(ulong userData = 0, SqeOption options = SqeOption.None, ushort personality = 0)
-    {
-        unchecked
-        {
-            _sqe->opcode = (byte)IoUringOp.Nop;
-            _sqe->flags = (byte)options;
-            _sqe->fd = -1;
-            _sqe->user_data = userData;
-            _sqe->personality = personality;
-        }
-
-        _queue.NotifyPrepared(_index);
-    }
-
     #region Timeout
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -325,6 +298,53 @@ public readonly unsafe partial struct Submission
     {
         PrepareMultishotAccept(fd, ref addr, ref addrlen, flags);
         SetTargetFixedFile(IORING_FILE_INDEX_ALLOC - 1);
+    }
+
+    #endregion
+
+    #region Buffer
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void PrepareProvideBuffers(void* addr, int len, int nr, int bgid, int bid)
+    {
+        PrepareReadWrite(IoUringOp.ProvideBuffers, nr, addr, (uint)len, (ulong)bid);
+        _sqe->buf_group = (ushort)bgid;
+        _queue.NotifyPrepared(_index);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void PrepareRemoveBuffers(int nr, int bgid)
+    {
+        PrepareReadWrite(IoUringOp.RemoveBuffers, nr, null, 0, 0);
+        _sqe->buf_group = (ushort)bgid;
+        _queue.NotifyPrepared(_index);
+    }
+
+    #endregion
+
+    #region Misc
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void PrepareFSync(FileDescriptor fd, uint fsyncFlags)
+    {
+        PrepareReadWrite(IoUringOp.FSync, fd, null, 0, 0);
+        _sqe->fsync_flags = fsyncFlags;
+        _queue.NotifyPrepared(_index);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void PrepareNop(ulong userData = 0, SqeOption options = SqeOption.None, ushort personality = 0)
+    {
+        unchecked
+        {
+            _sqe->opcode = (byte)IoUringOp.Nop;
+            _sqe->flags = (byte)options;
+            _sqe->fd = -1;
+            _sqe->user_data = userData;
+            _sqe->personality = personality;
+        }
+
+        _queue.NotifyPrepared(_index);
     }
 
     #endregion

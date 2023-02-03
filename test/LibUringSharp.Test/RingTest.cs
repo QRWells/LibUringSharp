@@ -1,5 +1,9 @@
 namespace LibUringSharp.Test;
 
+using System.Text;
+using LibUringSharp.Submission;
+using static Linux.LibC;
+
 public class RingTests
 {
     [Test]
@@ -84,5 +88,40 @@ public class RingTests
                 Assert.That(completions[i].UserData, Is.EqualTo(i));
                 Assert.That(completions[i].Result, Is.EqualTo(0));
             });
+    }
+
+    [Test]
+    public void TestFileIO()
+    {
+        using var ring = new Ring(4);
+        using var file = Open("test.txt", OpenOption.Create | OpenOption.Truncate | OpenOption.ReadWrite, new FilePermissions());
+        var str = "Hello World!";
+
+        Assert.That(ring, Is.Not.Null);
+        if (!ring.TryGetNextSqe(out var sub))
+            Assert.Fail("Failed to get next submission queue entry");
+
+        // Write to the file
+        var bytes = Encoding.UTF8.GetBytes(str);
+        sub.PrepareWrite(file, bytes, 0);
+        sub.Option |= SubmissionOption.IoLink;
+
+        // Read the file
+        var buffer = new byte[str.Length];
+        if (!ring.TryGetNextSqe(out sub))
+            Assert.Fail("Failed to get next submission queue entry");
+        sub.PrepareRead(file, buffer, 0);
+
+
+        Assert.That(ring.Submit(), Is.EqualTo(2));
+
+        if (!ring.TryGetCompletion(out var com))
+            Assert.Fail("Failed to get completion");
+        Assert.That(com.Result, Is.EqualTo(str.Length));
+
+        if (!ring.TryGetCompletion(out com))
+            Assert.Fail("Failed to get completion");
+        Assert.That(com.Result, Is.EqualTo(str.Length));
+        Assert.That(Encoding.UTF8.GetString(buffer), Is.EqualTo(str));
     }
 }

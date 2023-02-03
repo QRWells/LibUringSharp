@@ -82,25 +82,25 @@ public static partial class LibC
      * sqe->flags
      */
     /* use fixed fileset */
-    public const uint IOSQE_FIXED_FILE = 1U << IOSQE_FIXED_FILE_BIT;
+    public const byte IOSQE_FIXED_FILE = 1 << IOSQE_FIXED_FILE_BIT;
 
     /* issue after inflight IO */
-    public const uint IOSQE_IO_DRAIN = 1U << IOSQE_IO_DRAIN_BIT;
+    public const byte IOSQE_IO_DRAIN = 1 << IOSQE_IO_DRAIN_BIT;
 
     /* links next sqe */
-    public const uint IOSQE_IO_LINK = 1U << IOSQE_IO_LINK_BIT;
+    public const byte IOSQE_IO_LINK = 1 << IOSQE_IO_LINK_BIT;
 
     /* like LINK, but stronger */
-    public const uint IOSQE_IO_HARDLINK = 1U << IOSQE_IO_HARDLINK_BIT;
+    public const byte IOSQE_IO_HARDLINK = 1 << IOSQE_IO_HARDLINK_BIT;
 
     /* always go async */
-    public const uint IOSQE_ASYNC = 1U << IOSQE_ASYNC_BIT;
+    public const byte IOSQE_ASYNC = 1 << IOSQE_ASYNC_BIT;
 
     /* select buffer from sqe->buf_group */
-    public const uint IOSQE_BUFFER_SELECT = 1U << IOSQE_BUFFER_SELECT_BIT;
+    public const byte IOSQE_BUFFER_SELECT = 1 << IOSQE_BUFFER_SELECT_BIT;
 
     /* don't post CQE if request succeeded */
-    public const uint IOSQE_CQE_SKIP_SUCCESS = 1U << IOSQE_CQE_SKIP_SUCCESS_BIT;
+    public const byte IOSQE_CQE_SKIP_SUCCESS = 1 << IOSQE_CQE_SKIP_SUCCESS_BIT;
 
     /*
      * io_uring_setup() flags

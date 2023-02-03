@@ -27,6 +27,9 @@ public sealed unsafe class SubmissionQueue
     private uint _sqeHead;
     private uint _sqeTail;
 
+    private int Shift => _flags.HasFlag(RingSetup.Sqe128) ? 1 : 0;
+    private bool IsSQPolling => _flags.HasFlag(RingSetup.KernelSubmissionQueuePolling);
+
     public SubmissionQueue(Ring parent, MMapHandle sqPtr, MMapHandle sqePtr, uint ringSize,
         in io_sqring_offsets offsets,
         RingSetup flags)
@@ -71,28 +74,27 @@ public sealed unsafe class SubmissionQueue
     {
         uint head;
         var next = unchecked(_sqeTail + 1);
-        var shift = 0;
 
-        if (_flags.HasFlag(RingSetup.Sqe128))
-            shift = 1;
-        if (!_flags.HasFlag(RingSetup.KernelSubmissionQueuePolling))
+        if (!IsSQPolling)
             head = *_kHead;
         else
             head = Volatile.Read(ref *_kHead);
 
-        if (next - head <= _ringEntries)
+        if (next - head > _ringEntries) // No more free sqes
         {
-            var idx = (_sqeTail & _ringMask) << shift;
-            var internalSqe = &_sqes[idx];
-            Unsafe.InitBlockUnaligned(internalSqe, 0, (uint)io_uring_sqe.Size);
-            _sqeTail = next;
-            sqe = new Submission(this, internalSqe, idx);
-            Volatile.Write(ref _sqeState[idx], SqeStateReserved);
-            return true;
+            sqe = default;
+            return false;
         }
 
-        sqe = default;
-        return false;
+        var idx = (_sqeTail & _ringMask) << Shift;
+        var internalSqe = &_sqes[idx];
+        Unsafe.InitBlockUnaligned(internalSqe, 0, (uint)io_uring_sqe.Size);
+
+        _sqeTail = next;
+        Volatile.Write(ref _sqeState[idx], SqeStateReserved);
+        sqe = new Submission(this, internalSqe, idx);
+
+        return true;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -117,7 +119,7 @@ public sealed unsafe class SubmissionQueue
     {
         if (submit == 0)
             return false;
-        if (!_flags.HasFlag(RingSetup.KernelSubmissionQueuePolling))
+        if (!IsSQPolling)
             return true;
 
         Thread.MemoryBarrier();
@@ -159,7 +161,7 @@ public sealed unsafe class SubmissionQueue
 
         while (submitted-- != 0)
         {
-            var idx = head & _ringMask;
+            var idx = (head & _ringMask) << Shift;
             _sqeState[idx] = SqeStateFree;
             head = unchecked(head + 1);
         }
@@ -187,7 +189,7 @@ public sealed unsafe class SubmissionQueue
 
         do
         {
-            var idx = head & _ringMask;
+            var idx = (head & _ringMask) << Shift;
             if (Volatile.Read(ref _sqeState[idx]) < SqeStatePrepared)
                 break;
             Volatile.Write(ref _sqeState[idx], SqeStateSubmitted);
@@ -197,7 +199,7 @@ public sealed unsafe class SubmissionQueue
         _sqeHead = head;
 
         // Ensure kernel sees the SQE updates before the tail update.
-        if (!_flags.HasFlag(RingSetup.KernelSubmissionQueuePolling))
+        if (!IsSQPolling)
             *_kTail = tail;
         else
             Volatile.Write(ref *_kTail, tail);
