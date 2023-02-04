@@ -8,6 +8,8 @@ public readonly unsafe partial struct Submission
     private readonly uint _index;
     private readonly SubmissionQueue _queue;
 
+    internal uint Index => _index;
+
     internal Submission(SubmissionQueue sq, io_uring_sqe* sqe, uint index)
     {
         _queue = sq;

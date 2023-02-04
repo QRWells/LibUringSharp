@@ -70,7 +70,7 @@ public sealed unsafe class SubmissionQueue
         if (ret < 0) throw new Exception("MemAdvise failed");
     }
 
-    internal bool TryGetNextSqe(out Submission sqe)
+    internal bool TryGetNextSubmission(out Submission submission)
     {
         uint head;
         var next = unchecked(_sqeTail + 1);
@@ -82,19 +82,63 @@ public sealed unsafe class SubmissionQueue
 
         if (next - head > _ringEntries) // No more free sqes
         {
-            sqe = default;
+            submission = default;
             return false;
         }
 
         var idx = (_sqeTail & _ringMask) << Shift;
+
+        if (_sqeState[idx] > SqeStateFree)
+        {
+            submission = default;
+            return false;
+        }
+
         var internalSqe = &_sqes[idx];
         Unsafe.InitBlockUnaligned(internalSqe, 0, (uint)io_uring_sqe.Size);
 
         _sqeTail = next;
         Volatile.Write(ref _sqeState[idx], SqeStateReserved);
-        sqe = new Submission(this, internalSqe, idx);
+        submission = new Submission(this, internalSqe, idx);
 
         return true;
+    }
+
+    internal int TryGetNextSubmissions(Span<Submission> submissions)
+    {
+        if (submissions.Length == 0) return 0;
+
+        uint head;
+        var tail = _sqeTail;
+        var next = unchecked(_sqeTail + submissions.Length);
+
+        if (!IsSQPolling)
+            head = *_kHead;
+        else
+            head = Volatile.Read(ref *_kHead);
+
+        // No more free sqes
+        if (next - head > _ringEntries) return 0;
+
+        _sqeTail = (uint)next;
+
+        var count = 0;
+
+        for (var i = 0; i < submissions.Length; ++i)
+        {
+            var idx = (tail & _ringMask) << Shift;
+            tail = unchecked(tail + 1);
+
+            if (_sqeState[idx] > SqeStateFree) break;
+
+            var internalSqe = &_sqes[idx];
+            Unsafe.InitBlockUnaligned(internalSqe, 0, (uint)io_uring_sqe.Size);
+            Volatile.Write(ref _sqeState[idx], SqeStateReserved);
+            submissions[i] = new Submission(this, internalSqe, idx);
+            ++count;
+        }
+
+        return count;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -181,28 +225,29 @@ public sealed unsafe class SubmissionQueue
 
     private uint Flush()
     {
-        var tail = _sqeTail;
-
-        if (_sqeHead == tail) return tail - *_kHead;
-
         var head = _sqeHead;
+        var tail = _sqeTail;
+        if (head == tail) return 0;
 
-        do
+        var ktail = Volatile.Read(ref *_kTail);
+
+        while (head < tail)
         {
             var idx = (head & _ringMask) << Shift;
-            if (Volatile.Read(ref _sqeState[idx]) < SqeStatePrepared)
+            if (_sqeState[idx] < SqeStatePrepared)
                 break;
-            Volatile.Write(ref _sqeState[idx], SqeStateSubmitted);
-            head++;
-        } while (head < tail);
 
-        _sqeHead = head;
+            _sqeState[idx] = SqeStateSubmitted;
+            // Increment kernel tail for each consecutive prepare sqe
+            ktail = unchecked(ktail + 1);
+            head = unchecked(head + 1);
+        }
 
         // Ensure kernel sees the SQE updates before the tail update.
         if (!IsSQPolling)
-            *_kTail = tail;
+            *_kTail = ktail;
         else
-            Volatile.Write(ref *_kTail, tail);
-        return tail - *_kHead;
+            Volatile.Write(ref *_kTail, ktail);
+        return ktail - *_kHead;
     }
 }

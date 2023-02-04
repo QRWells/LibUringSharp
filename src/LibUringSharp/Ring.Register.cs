@@ -6,9 +6,9 @@ using static Linux.LibC;
 
 namespace LibUringSharp;
 
-public sealed partial class Ring
+public unsafe sealed partial class Ring
 {
-    public unsafe void RegisterRingFd()
+    public void RegisterRingFd()
     {
         var up = new io_uring_rsrc_update { offset = _enterRingFd };
 
@@ -19,7 +19,7 @@ public sealed partial class Ring
         _intFlags &= ~RingInterrupt.RegRing;
     }
 
-    public unsafe int UnregisterRingFd()
+    public int UnregisterRingFd()
     {
         var up = new io_uring_rsrc_update { offset = _enterRingFd };
 
@@ -30,142 +30,105 @@ public sealed partial class Ring
         return ret;
     }
 
-    internal unsafe int RegisterProbe(io_uring_probe* p, uint nrOps)
+    internal int RegisterProbe(io_uring_probe* p, uint nrOps)
     {
         return io_uring_register(_ringFd, IORING_REGISTER_PROBE, p, nrOps);
     }
 
     public int RegisterPersonality()
     {
-        unsafe
-        {
-            return io_uring_register(_ringFd, IORING_REGISTER_PERSONALITY,
-                null, 0);
-        }
+        return io_uring_register(_ringFd, IORING_REGISTER_PERSONALITY, null, 0);
     }
 
     public int UnregisterPersonality(int id)
     {
-        unsafe
-        {
-            return io_uring_register(_ringFd, IORING_UNREGISTER_PERSONALITY,
-                null, (uint)id);
-        }
+        return io_uring_register(_ringFd, IORING_UNREGISTER_PERSONALITY, null, (uint)id);
     }
 
     public int RegisterRestrictions(Span<io_uring_restriction> res)
     {
-        unsafe
+        fixed (io_uring_restriction* resPtr = res)
         {
-            fixed (io_uring_restriction* resPtr = res)
-            {
-                return io_uring_register(_ringFd, IORING_REGISTER_RESTRICTIONS,
-                    resPtr, (uint)res.Length);
-            }
+            return io_uring_register(_ringFd, IORING_REGISTER_RESTRICTIONS, resPtr, (uint)res.Length);
         }
     }
 
     public int EnableRings()
     {
-        unsafe
-        {
-            return io_uring_register(_ringFd, IORING_REGISTER_ENABLE_RINGS, null, 0);
-        }
+        return io_uring_register(_ringFd, IORING_REGISTER_ENABLE_RINGS, null, 0);
     }
 
     public int RegisterBufRing(ref io_uring_buf_reg reg)
     {
-        unsafe
+        fixed (io_uring_buf_reg* regPtr = &reg)
         {
-            fixed (io_uring_buf_reg* regPtr = &reg)
-            {
-                return io_uring_register(_ringFd, IORING_REGISTER_PBUF_RING, regPtr, 1);
-            }
+            return io_uring_register(_ringFd, IORING_REGISTER_PBUF_RING, regPtr, 1);
         }
     }
 
     public int UnregisterBufRing(int bgid)
     {
-        unsafe
-        {
-            var reg = new io_uring_buf_reg { bgid = (ushort)bgid };
-
-            return io_uring_register(_ringFd, IORING_UNREGISTER_PBUF_RING, &reg, 1);
-        }
+        var reg = new io_uring_buf_reg { bgid = (ushort)bgid };
+        return io_uring_register(_ringFd, IORING_UNREGISTER_PBUF_RING, &reg, 1);
     }
 
     public int RegisterSyncCancel(ref io_uring_sync_cancel_reg reg)
     {
-        unsafe
+        fixed (io_uring_sync_cancel_reg* regPtr = &reg)
         {
-            fixed (io_uring_sync_cancel_reg* regPtr = &reg)
-            {
-                return io_uring_register(_ringFd, IORING_REGISTER_SYNC_CANCEL, regPtr, 1);
-            }
+            return io_uring_register(_ringFd, IORING_REGISTER_SYNC_CANCEL, regPtr, 1);
         }
     }
 
     public int RegisterFileAllocRange(uint off, uint len)
     {
         var range = new io_uring_file_index_range { off = off, len = len };
-        unsafe
-        {
-            return io_uring_register(_ringFd, IORING_REGISTER_FILE_ALLOC_RANGE, &range, 0);
-        }
+        return io_uring_register(_ringFd, IORING_REGISTER_FILE_ALLOC_RANGE, &range, 0);
     }
 
-    #region buffers
+    #region Buffers
 
     public int RegisterBuffers(Span<iovec> iovecs)
     {
-        unsafe
+        fixed (iovec* ptr = iovecs)
         {
-            fixed (iovec* ptr = iovecs)
-            {
-                return io_uring_register(_ringFd, IORING_REGISTER_BUFFERS, ptr, (uint)iovecs.Length);
-            }
+            return io_uring_register(_ringFd, IORING_REGISTER_BUFFERS, ptr, (uint)iovecs.Length);
         }
     }
 
     public int RegisterBuffersTags(Span<iovec> iovecs, ref ulong tags)
     {
-        unsafe
+        fixed (iovec* ptr = iovecs)
         {
-            fixed (iovec* ptr = iovecs)
+            fixed (ulong* tagsPtr = &tags)
             {
-                fixed (ulong* tagsPtr = &tags)
+                var reg = new io_uring_rsrc_register
                 {
-                    var reg = new io_uring_rsrc_register
-                    {
-                        nr = (uint)iovecs.Length,
-                        data = (ulong)ptr,
-                        tags = (ulong)tagsPtr
-                    };
-                    return io_uring_register(_ringFd, IORING_REGISTER_BUFFERS2,
-                        &reg, io_uring_rsrc_register.Size);
-                }
+                    nr = (uint)iovecs.Length,
+                    data = (ulong)ptr,
+                    tags = (ulong)tagsPtr
+                };
+                return io_uring_register(_ringFd, IORING_REGISTER_BUFFERS2,
+                    &reg, io_uring_rsrc_register.Size);
             }
         }
     }
 
     public int RegisterBuffersUpdateTag(uint off, Span<iovec> iovecs, ref ulong tags)
     {
-        unsafe
+        fixed (iovec* ptr = iovecs)
         {
-            fixed (iovec* ptr = iovecs)
+            fixed (ulong* tagsPtr = &tags)
             {
-                fixed (ulong* tagsPtr = &tags)
+                var reg = new io_uring_rsrc_update2
                 {
-                    var reg = new io_uring_rsrc_update2
-                    {
-                        nr = (uint)iovecs.Length,
-                        data = (ulong)ptr,
-                        tags = (ulong)tagsPtr,
-                        offset = off
-                    };
-                    return io_uring_register(_ringFd, IORING_REGISTER_BUFFERS_UPDATE,
-                        &reg, io_uring_rsrc_update2.Size);
-                }
+                    nr = (uint)iovecs.Length,
+                    data = (ulong)ptr,
+                    tags = (ulong)tagsPtr,
+                    offset = off
+                };
+                return io_uring_register(_ringFd, IORING_REGISTER_BUFFERS_UPDATE,
+                    &reg, io_uring_rsrc_update2.Size);
             }
         }
     }
@@ -177,36 +140,63 @@ public sealed partial class Ring
             flags = IORING_RSRC_REGISTER_SPARSE,
             nr = nr
         };
-
-        unsafe
-        {
-            return io_uring_register(_ringFd, IORING_REGISTER_BUFFERS2, &reg, io_uring_rsrc_register.Size);
-        }
+        return io_uring_register(_ringFd, IORING_REGISTER_BUFFERS2, &reg, io_uring_rsrc_register.Size);
     }
 
     public int UnregisterBuffers()
     {
-        unsafe
-        {
-            return io_uring_register(_ringFd, IORING_UNREGISTER_BUFFERS, null, 0);
-        }
+        return io_uring_register(_ringFd, IORING_UNREGISTER_BUFFERS, null, 0);
     }
 
     #endregion
 
-    #region files
+    #region Files
 
     public int RegisterFiles(Span<FileDescriptor> files)
     {
         int ret, didIncrease = 0;
-        unsafe
+        fixed (int* filesPtr = files.ToIntSpan())
         {
-            fixed (int* filesPtr = files.ToIntSpan())
+            do
             {
+                ret = io_uring_register(_ringFd, IORING_REGISTER_FILES, filesPtr,
+                    (uint)files.Length);
+                if (ret >= 0)
+                    break;
+                if (ret == -(int)ErrorNo.TooManyOpenFiles && didIncrease == 0)
+                {
+                    didIncrease = 1;
+                    IncreaseResourceLimitFile((uint)files.Length);
+                    continue;
+                }
+
+                break;
+            } while (true);
+        }
+
+        return ret;
+    }
+
+    public int RegisterFilesTags(Span<FileDescriptor> files, ref ulong tags)
+    {
+        int ret;
+        fixed (int* filesPtr = files.ToIntSpan())
+        {
+            fixed (ulong* tagsPtr = &tags)
+            {
+                var reg = new io_uring_rsrc_register
+                {
+                    nr = (uint)files.Length,
+                    data = (ulong)filesPtr,
+                    tags = (ulong)tagsPtr
+                };
+
+                var didIncrease = 0;
+
                 do
                 {
-                    ret = io_uring_register(_ringFd, IORING_REGISTER_FILES, filesPtr,
-                        (uint)files.Length);
+                    ret = io_uring_register(_ringFd, IORING_REGISTER_FILES2, &reg,
+                        io_uring_rsrc_register.Size);
                     if (ret >= 0)
                         break;
                     if (ret == -(int)ErrorNo.TooManyOpenFiles && didIncrease == 0)
@@ -224,46 +214,6 @@ public sealed partial class Ring
         return ret;
     }
 
-    public int RegisterFilesTags(Span<FileDescriptor> files, ref ulong tags)
-    {
-        int ret;
-        unsafe
-        {
-            fixed (int* filesPtr = files.ToIntSpan())
-            {
-                fixed (ulong* tagsPtr = &tags)
-                {
-                    var reg = new io_uring_rsrc_register
-                    {
-                        nr = (uint)files.Length,
-                        data = (ulong)filesPtr,
-                        tags = (ulong)tagsPtr
-                    };
-
-                    var didIncrease = 0;
-
-                    do
-                    {
-                        ret = io_uring_register(_ringFd, IORING_REGISTER_FILES2, &reg,
-                            io_uring_rsrc_register.Size);
-                        if (ret >= 0)
-                            break;
-                        if (ret == -(int)ErrorNo.TooManyOpenFiles && didIncrease == 0)
-                        {
-                            didIncrease = 1;
-                            IncreaseResourceLimitFile((uint)files.Length);
-                            continue;
-                        }
-
-                        break;
-                    } while (true);
-                }
-            }
-        }
-
-        return ret;
-    }
-
     public int RegisterFilesSparse(uint nr)
     {
         var reg = new io_uring_rsrc_register
@@ -275,11 +225,7 @@ public sealed partial class Ring
 
         do
         {
-            unsafe
-            {
-                ret = io_uring_register(_ringFd, IORING_REGISTER_FILES2,
-                    &reg, io_uring_rsrc_register.Size);
-            }
+            ret = io_uring_register(_ringFd, IORING_REGISTER_FILES2, &reg, io_uring_rsrc_register.Size);
 
             if (ret >= 0)
                 break;
@@ -298,50 +244,40 @@ public sealed partial class Ring
 
     public int RegisterFilesUpdateTag(uint off, Span<FileDescriptor> files, ref ulong tags)
     {
-        unsafe
+        fixed (int* filesPtr = files.ToIntSpan())
         {
-            fixed (int* filesPtr = files.ToIntSpan())
+            fixed (ulong* tagsPtr = &tags)
             {
-                fixed (ulong* tagsPtr = &tags)
+                var up = new io_uring_rsrc_update2
                 {
-                    var up = new io_uring_rsrc_update2
-                    {
-                        offset = off,
-                        data = (ulong)filesPtr,
-                        tags = (ulong)tagsPtr,
-                        nr = (uint)files.Length
-                    };
+                    offset = off,
+                    data = (ulong)filesPtr,
+                    tags = (ulong)tagsPtr,
+                    nr = (uint)files.Length
+                };
 
-                    return io_uring_register(_ringFd, IORING_REGISTER_FILES_UPDATE2,
-                        &up, io_uring_rsrc_update2.Size);
-                }
+                return io_uring_register(_ringFd, IORING_REGISTER_FILES_UPDATE2,
+                    &up, io_uring_rsrc_update2.Size);
             }
         }
     }
 
     public int UnregisterFiles()
     {
-        unsafe
-        {
-            return io_uring_register(_ringFd, IORING_UNREGISTER_FILES, null, 0);
-        }
+        return io_uring_register(_ringFd, IORING_UNREGISTER_FILES, null, 0);
     }
 
     public int RegisterFilesUpdate(uint off, Span<FileDescriptor> files)
     {
-        unsafe
+        fixed (int* filesPtr = files.ToIntSpan())
         {
-            fixed (int* filesPtr = files.ToIntSpan())
+            var up = new io_uring_rsrc_update
             {
-                var up = new io_uring_rsrc_update
-                {
-                    offset = off,
-                    data = (ulong)filesPtr
-                };
+                offset = off,
+                data = (ulong)filesPtr
+            };
 
-                return io_uring_register(_ringFd, IORING_REGISTER_FILES_UPDATE,
-                    &up, (uint)files.Length);
-            }
+            return io_uring_register(_ringFd, IORING_REGISTER_FILES_UPDATE, &up, (uint)files.Length);
         }
     }
 
@@ -352,35 +288,22 @@ public sealed partial class Ring
     public void RegisterEventFd(FileDescriptor fd)
     {
         int ret;
-        unsafe
-        {
-            int fileDescriptor = fd;
-            ret = io_uring_register(_ringFd, IORING_REGISTER_EVENTFD, &fileDescriptor, 1);
-        }
+        int fileDescriptor = fd;
+        ret = io_uring_register(_ringFd, IORING_REGISTER_EVENTFD, &fileDescriptor, 1);
 
         if (ret < 0) throw new RegisterEventFdFailedException();
     }
 
     public void RegisterEventFdAsync(FileDescriptor fd)
     {
-        int ret;
-        unsafe
-        {
-            int fileDescriptor = fd;
-            ret = io_uring_register(_ringFd, IORING_REGISTER_EVENTFD_ASYNC, &fileDescriptor, 1);
-        }
-
+        int fileDescriptor = fd;
+        var ret = io_uring_register(_ringFd, IORING_REGISTER_EVENTFD_ASYNC, &fileDescriptor, 1);
         if (ret < 0) throw new RegisterEventFdFailedException();
     }
 
     public void UnregisterEventFd()
     {
-        int ret;
-        unsafe
-        {
-            ret = io_uring_register(_ringFd, IORING_UNREGISTER_EVENTFD, null, 1);
-        }
-
+        var ret = io_uring_register(_ringFd, IORING_UNREGISTER_EVENTFD, null, 1);
         if (ret < 0) throw new RegisterEventFdFailedException();
     }
 
@@ -392,31 +315,22 @@ public sealed partial class Ring
     {
         if (cpuSize >= 1U << 31)
             throw new ArgumentException("cpuSize must be less than 1U << 31", nameof(cpuSize));
-        unsafe
+        fixed (cpu_set_t* maskPtr = &mask)
         {
-            fixed (cpu_set_t* maskPtr = &mask)
-            {
-                return io_uring_register(_ringFd, IORING_REGISTER_IOWQ_AFF, maskPtr, (uint)cpuSize);
-            }
+            return io_uring_register(_ringFd, IORING_REGISTER_IOWQ_AFF, maskPtr, (uint)cpuSize);
         }
     }
 
     public int UnregisterIoWqAff()
     {
-        unsafe
-        {
-            return io_uring_register(_ringFd, IORING_UNREGISTER_IOWQ_AFF, null, 0);
-        }
+        return io_uring_register(_ringFd, IORING_UNREGISTER_IOWQ_AFF, null, 0);
     }
 
     public int RegisterIoWqMaxWorkers(ref uint val)
     {
-        unsafe
+        fixed (uint* valPtr = &val)
         {
-            fixed (uint* valPtr = &val)
-            {
-                return io_uring_register(_ringFd, IORING_REGISTER_IOWQ_MAX_WORKERS, valPtr, 2);
-            }
+            return io_uring_register(_ringFd, IORING_REGISTER_IOWQ_MAX_WORKERS, valPtr, 2);
         }
     }
 

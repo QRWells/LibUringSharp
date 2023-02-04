@@ -232,10 +232,10 @@ public static partial class LibC
      *				IORING_NOTIF_USAGE_ZC_COPIED if data was copied
      *				(at least partially).
      */
-    public const uint IORING_RECVSEND_POLL_FIRST = 1U << 0;
-    public const uint IORING_RECV_MULTISHOT = 1U << 1;
-    public const uint IORING_RECVSEND_FIXED_BUF = 1U << 2;
-    public const uint IORING_SEND_ZC_REPORT_USAGE = 1U << 3;
+    public const ushort IORING_RECVSEND_POLL_FIRST = 1 << 0;
+    public const ushort IORING_RECV_MULTISHOT = 1 << 1;
+    public const ushort IORING_RECVSEND_FIXED_BUF = 1 << 2;
+    public const ushort IORING_SEND_ZC_REPORT_USAGE = 1 << 3;
 
     /*
      * cqe.res for IORING_CQE_F_NOTIF if

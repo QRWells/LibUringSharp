@@ -10,16 +10,16 @@ namespace LibUringSharp;
 
 public sealed partial class Ring : IDisposable
 {
+    private readonly MMapHandle _cqMMapHandle;
     private readonly CompletionQueue _completionQueue;
 
-    private readonly MMapHandle _cqMMapHandle;
-    private readonly RingFeature _features;
+    private readonly MMapHandle _sqMMapHandle;
+    private readonly MMapHandle _sqeMMapHandle;
+    private readonly SubmissionQueue _submissionQueue;
 
+    private readonly RingFeature _features;
     private readonly RingSetup _flags;
     private readonly FileDescriptor _ringFd;
-    private readonly MMapHandle _sqeMMapHandle;
-    private readonly MMapHandle _sqMMapHandle;
-    private readonly SubmissionQueue _submissionQueue;
     private FileDescriptor _enterRingFd;
     private RingInterrupt _intFlags;
 
@@ -145,9 +145,19 @@ public sealed partial class Ring : IDisposable
         return io_uring_enter(_enterRingFd, 0, 0, flags, ref sigset);
     }
 
-    public bool TryGetNextSqe(out Submission.Submission sqe)
+    public bool TryGetNextSubmission(out Submission.Submission submission)
     {
-        return _submissionQueue.TryGetNextSqe(out sqe);
+        return _submissionQueue.TryGetNextSubmission(out submission);
+    }
+
+    public int GetSubmissions(Span<Submission.Submission> submissions)
+    {
+        return _submissionQueue.TryGetNextSubmissions(submissions);
+    }
+
+    public void Prepared(in Submission.Submission sqe)
+    {
+        _submissionQueue.NotifyPrepared(sqe.Index);
     }
 
     internal bool CqRingNeedsEnter()
@@ -175,7 +185,7 @@ public sealed partial class Ring : IDisposable
         return _completionQueue.TryGetCompletion(out cqe);
     }
 
-    public uint TryGetBatch(Span<Completion.Completion> completions)
+    public uint TryGetCompletions(Span<Completion.Completion> completions)
     {
         return _completionQueue.TryGetBatch(completions);
     }
