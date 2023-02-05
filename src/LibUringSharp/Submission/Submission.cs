@@ -27,6 +27,8 @@ public readonly unsafe partial struct Submission
 [Flags]
 public enum SubmissionOption : byte
 {
+    None = 0,
+
     /// <summary>
     /// use fixed fileset
     /// </summary>

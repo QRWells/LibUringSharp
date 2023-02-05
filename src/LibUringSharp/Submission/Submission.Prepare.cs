@@ -450,7 +450,7 @@ public readonly unsafe partial struct Submission
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void PrepareNop(ulong userData = 0, SqeOption options = SqeOption.None, ushort personality = 0)
+    public void PrepareNop(ulong userData = 0, SubmissionOption options = SubmissionOption.None, ushort personality = 0)
     {
         unchecked
         {
