@@ -23,6 +23,8 @@ public sealed partial class Ring : IDisposable
     private FileDescriptor _enterRingFd;
     private RingInterrupt _intFlags;
 
+    private unsafe readonly void*[] _selectBufferGroup;
+
     /// <summary>
     ///     Constructs a new <see cref="Ring" /> with the given number of entries and flags
     /// </summary>
@@ -63,6 +65,28 @@ public sealed partial class Ring : IDisposable
         _flags = (RingSetup)p.flags;
         _enterRingFd = _ringFd;
         _features = (RingFeature)p.features;
+
+        unsafe
+        {
+            _selectBufferGroup = new void*[entries];
+            for (var i = 0; i < _selectBufferGroup.Length; i++)
+                _selectBufferGroup[i] = NativeMemory.AllocZeroed(4096);
+
+            InitSelectBufferGroup();
+        }
+    }
+
+    private unsafe void InitSelectBufferGroup()
+    {
+        for (var i = 0; i < _selectBufferGroup.Length; i++)
+        {
+            if (TryGetNextSubmission(out var sub))
+            {
+                sub.PrepareProvideBuffers(_selectBufferGroup[i], 4096, 1, i, 0);
+                Prepared(sub);
+            }
+        }
+        SubmitAndWait((uint)_selectBufferGroup.Length);
     }
 
     public bool IsKernelIoPolling => _flags.HasFlag(RingSetup.KernelIoPolling);
@@ -79,6 +103,11 @@ public sealed partial class Ring : IDisposable
             RegisterRingFd();
         _ringFd.Dispose();
         _enterRingFd.Dispose();
+        unsafe
+        {
+            for (var i = 0; i < _selectBufferGroup.Length; i++)
+                NativeMemory.Free(_selectBufferGroup[i]);
+        }
     }
 
     /// <summary>

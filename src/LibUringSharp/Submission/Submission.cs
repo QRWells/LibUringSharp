@@ -22,6 +22,12 @@ public readonly unsafe partial struct Submission
         get => (SubmissionOption)_sqe->flags;
         set => _sqe->flags = (byte)value;
     }
+
+    public void SetSelectBufferGroup(ushort group)
+    {
+        _sqe->buf_group = group;
+        Option |= SubmissionOption.BufferSelect;
+    }
 }
 
 [Flags]
