@@ -21,6 +21,8 @@ public sealed unsafe class CompletionQueue
     private uint* _kOverflow;
     private uint _ringEntries;
 
+    private int Shift => _flags.HasFlag(RingSetup.Cqe32) ? 1 : 0;
+
     public CompletionQueue(Ring parent, MMapHandle cqPtr, uint ringSize, in io_cqring_offsets offsets, RingSetup flags)
     {
         _parent = parent;
@@ -51,19 +53,29 @@ public sealed unsafe class CompletionQueue
     {
         var head = Volatile.Read(ref *_kHead);
 
+        // No Completion Queue Event available
         if (head == *_kTail)
         {
-            // No Completion Queue Event available
             cqe = default;
             return false;
         }
 
-        var internalCqe = &_cqes[head & _ringMask];
+        var internalCqe = &_cqes[(head & _ringMask) << Shift];
 
         cqe = new Completion(internalCqe->res, internalCqe->user_data, internalCqe->flags);
 
         Volatile.Write(ref *_kHead, head + 1);
         return true;
+    }
+
+    public void IgnoreCompletions(int count = 1)
+    {
+        var head = Volatile.Read(ref *_kHead);
+
+        // No Completion could be ignored
+        if (head == *_kTail) return;
+
+        Volatile.Write(ref *_kHead, head + (uint)count);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -75,12 +87,8 @@ public sealed unsafe class CompletionQueue
     internal uint TryGetBatch(Span<Completion> completions)
     {
         var overflowChecked = false;
-        var shift = 0;
 
-        if (_flags.HasFlag(RingSetup.Cqe32))
-            shift = 1;
-
-        again:
+    again:
         var ready = Ready();
         if (ready != 0)
         {
@@ -91,7 +99,7 @@ public sealed unsafe class CompletionQueue
             var last = head + count;
             for (; head != last; head++, i++)
             {
-                var internalCqe = &_cqes[(head & _ringMask) << shift];
+                var internalCqe = &_cqes[(head & _ringMask) << Shift];
                 completions[i] = new Completion(internalCqe->res, internalCqe->user_data, internalCqe->flags);
             }
 

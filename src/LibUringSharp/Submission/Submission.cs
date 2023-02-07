@@ -28,6 +28,12 @@ public readonly unsafe partial struct Submission
         _sqe->buf_group = group;
         Option |= SubmissionOption.BufferSelect;
     }
+
+    public ulong UserData
+    {
+        get => _sqe->user_data;
+        set => _sqe->user_data = value;
+    }
 }
 
 [Flags]

@@ -108,7 +108,7 @@ public class RingTests
     public void TestFileIO()
     {
         using var ring = new Ring(4);
-        using var file = Open("test.txt", OpenOption.Create | OpenOption.Truncate | OpenOption.ReadWrite, new FilePermissions());
+        var file = Open("test.txt", OpenOption.Create | OpenOption.Truncate | OpenOption.ReadWrite, new FilePermissions());
         var str = "Hello World!\n";
 
         Assert.That(ring, Is.Not.Null);
@@ -140,5 +140,18 @@ public class RingTests
             Assert.Fail("Failed to get completion");
         Assert.That(com.Result, Is.EqualTo(str.Length));
         Assert.That(Encoding.UTF8.GetString(buffer[..str.Length]), Is.EqualTo(str));
+
+        file.Dispose();
+
+        File.Delete("test.txt");
+    }
+
+    [Test]
+    public async Task TestSelectBuffer()
+    {
+        using var ring = new Ring(4);
+        var id = await ring.RegisterBufferGroupAsync(1024, 1);
+        Assert.That(id, Is.EqualTo(0));
+        ring.UnregisterBufferGroup(id);
     }
 }

@@ -1,3 +1,4 @@
+using System.Numerics;
 using System.Runtime.InteropServices;
 using LibUringSharp.Completion;
 using LibUringSharp.Enums;
@@ -23,12 +24,14 @@ public sealed partial class Ring : IDisposable
     private FileDescriptor _enterRingFd;
     private RingInterrupt _intFlags;
 
-    private unsafe readonly void*[] _selectBufferGroup;
+    private int _lastGroupId = 0;
+    private Dictionary<int, BufferGroup> _bufferGroups = new();
+    private Queue<Action<Submission.Submission>> _pendingSubmissions = new();
 
     /// <summary>
     ///     Constructs a new <see cref="Ring" /> with the given number of entries and flags
     /// </summary>
-    /// <param name="entries">Entries in the ring</param>
+    /// <param name="entries">Entries in the ring, will be rounded up to the nearest power of 2</param>
     /// <param name="flags">Flags to pass to io_uring_setup</param>
     /// <exception cref="PlatformNotSupportedException">Thrown if the current OS is not Linux</exception>
     /// <exception cref="ArgumentException">Thrown if <paramref name="entries" /> is 0</exception>
@@ -41,6 +44,8 @@ public sealed partial class Ring : IDisposable
 
         if (entries == 0)
             throw new ArgumentException("entries must be greater than 0", nameof(entries));
+
+        entries = (uint)BitOperations.RoundUpToPowerOf2(entries);
 
         io_uring_params p = default;
         p.flags = (uint)flags;
@@ -65,28 +70,6 @@ public sealed partial class Ring : IDisposable
         _flags = (RingSetup)p.flags;
         _enterRingFd = _ringFd;
         _features = (RingFeature)p.features;
-
-        unsafe
-        {
-            _selectBufferGroup = new void*[entries];
-            for (var i = 0; i < _selectBufferGroup.Length; i++)
-                _selectBufferGroup[i] = NativeMemory.AllocZeroed(4096);
-
-            InitSelectBufferGroup();
-        }
-    }
-
-    private unsafe void InitSelectBufferGroup()
-    {
-        for (var i = 0; i < _selectBufferGroup.Length; i++)
-        {
-            if (TryGetNextSubmission(out var sub))
-            {
-                sub.PrepareProvideBuffers(_selectBufferGroup[i], 4096, 1, i, 0);
-                Prepared(sub);
-            }
-        }
-        SubmitAndWait((uint)_selectBufferGroup.Length);
     }
 
     public bool IsKernelIoPolling => _flags.HasFlag(RingSetup.KernelIoPolling);
@@ -103,11 +86,8 @@ public sealed partial class Ring : IDisposable
             RegisterRingFd();
         _ringFd.Dispose();
         _enterRingFd.Dispose();
-        unsafe
-        {
-            for (var i = 0; i < _selectBufferGroup.Length; i++)
-                NativeMemory.Free(_selectBufferGroup[i]);
-        }
+        foreach (var i in _bufferGroups.Keys)
+            _bufferGroups[i].Dispose();
     }
 
     /// <summary>
@@ -201,12 +181,16 @@ public sealed partial class Ring : IDisposable
 
     public int Submit()
     {
-        return _submissionQueue.Submit(_enterRingFd);
+        var result = _submissionQueue.Submit(_enterRingFd);
+        ProcessPendingSubmissions();
+        return result;
     }
 
     public int SubmitAndWait(uint waitNr)
     {
-        return _submissionQueue.SubmitAndWait(_enterRingFd, waitNr);
+        var result = _submissionQueue.SubmitAndWait(_enterRingFd, waitNr);
+        ProcessPendingSubmissions();
+        return result;
     }
 
     public bool TryGetCompletion(out Completion.Completion cqe)
@@ -217,5 +201,75 @@ public sealed partial class Ring : IDisposable
     public uint TryGetCompletions(Span<Completion.Completion> completions)
     {
         return _completionQueue.TryGetBatch(completions);
+    }
+
+    private void QueueSubmission(Action<Submission.Submission> action)
+    {
+        _pendingSubmissions.Enqueue(action);
+    }
+
+    private void ProcessPendingSubmissions()
+    {
+        while (_pendingSubmissions.TryPeek(out var action))
+        {
+            if (TryGetNextSubmission(out var sqe))
+            {
+                action(sqe);
+                _pendingSubmissions.Dequeue();
+            }
+            else
+            {
+                break;
+            }
+        }
+    }
+
+    private bool Issue(Action<Submission.Submission> action)
+    {
+        if (TryGetNextSubmission(out var sqe))
+        {
+            action(sqe);
+            return true;
+        }
+        QueueSubmission(action);
+        return false;
+    }
+
+    public Task<int> RegisterBufferGroupAsync(uint bufferSize, uint bufferCount)
+    {
+        var id = _lastGroupId++;
+        var bufferGroup = new BufferGroup(bufferSize, bufferCount);
+        var tcs = new TaskCompletionSource<int>();
+
+        Issue(sqe =>
+        {
+            unsafe
+            {
+                sqe.PrepareProvideBuffers(bufferGroup.Base, (int)bufferGroup.BufferSize, (int)bufferGroup.BufferCount, id, 0);
+                Prepared(sqe);
+                SubmitAndWait(1);
+            }
+            _bufferGroups.Add(id, bufferGroup);
+            tcs.SetResult(id);
+        });
+
+        return tcs.Task;
+    }
+
+    public void UnregisterBufferGroup(int bufferGroupId)
+    {
+        if (!_bufferGroups.TryGetValue(bufferGroupId, out var bufferGroup)) return;
+
+        _bufferGroups.Remove(bufferGroupId);
+
+        Issue(sqe =>
+        {
+            unsafe
+            {
+                sqe.PrepareRemoveBuffers((int)bufferGroup.BufferCount, bufferGroupId);
+                Prepared(sqe);
+                SubmitAndWait(1);
+            }
+        });
     }
 }
