@@ -9,15 +9,15 @@ public class BufferRingTest
     private const int BufferCount = 16;
     private const int TotalSize = BufferSize * BufferCount;
 
-    [SetUp]
+    [OneTimeSetUp]
     public void Setup()
     {
-        using var file = File.Open("test.txt", FileMode.OpenOrCreate, FileAccess.Write, FileShare.Write);
-        file.SetLength(0);
+        var file = File.Open("test.txt", FileMode.OpenOrCreate, FileAccess.Write, FileShare.Write);
         var buffer = new byte[TotalSize];
         for (var i = 0; i < BufferCount; i++) Array.Fill(buffer, (byte)(i + 1), i * BufferSize, BufferSize);
 
         file.Write(buffer);
+        file.Close();
     }
 
     [Test]
@@ -27,9 +27,11 @@ public class BufferRingTest
         using var file = File.Open("test.txt", FileMode.Open, FileAccess.Read, FileShare.Read);
         var fd = file.SafeFileHandle.DangerousGetHandle().ToInt32();
         var bufferRing = new BufferRing(1, BufferCount);
-        ring.RegisterBufRing(ref bufferRing);
+        Assert.That(ring.RegisterBufRing(ref bufferRing), Is.EqualTo(0));
+
         nint bufPtr;
         Span<byte> buffer;
+
         unsafe
         {
             var buf = NativeMemory.AlignedAlloc(TotalSize, BufferSize);
@@ -53,7 +55,7 @@ public class BufferRingTest
 
         for (var i = 0; i < BufferCount; i++)
         {
-            ring.TryGetCompletion(out var comp);
+            Assert.That(ring.TryGetCompletion(out var comp), Is.True);
             Assert.That(comp.IsBuffered, Is.True);
             Assert.That(comp.Result, Is.EqualTo(BufferSize));
             Assert.That(comp.UserData, Is.EqualTo(buffer[(comp.BufferId - 1) * BufferSize]));

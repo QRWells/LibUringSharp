@@ -39,35 +39,35 @@ public enum SubmissionOption : byte
     /// <summary>
     ///     use fixed fileset
     /// </summary>
-    FixedFile = 1 << 1,
+    FixedFile = 1 << 0,
 
     /// <summary>
     ///     issue after inflight IO
     /// </summary>
-    IoDrain = 1 << 2,
+    IoDrain = 1 << 1,
 
     /// <summary>
     ///     links next sqe
     /// </summary>
-    IoLink = 1 << 3,
+    IoLink = 1 << 2,
 
     /// <summary>
     ///     like LINK, but stronger
     /// </summary>
-    IoHardLink = 1 << 4,
+    IoHardLink = 1 << 3,
 
     /// <summary>
     ///     always go async
     /// </summary>
-    Async = 1 << 5,
+    Async = 1 << 4,
 
     /// <summary>
     ///     select buffer from sqe->buf_group
     /// </summary>
-    BufferSelect = 1 << 6,
+    BufferSelect = 1 << 5,
 
     /// <summary>
     ///     don't post CQE if request succeeded
     /// </summary>
-    CqeSkipSuccess = 1 << 7
+    CqeSkipSuccess = 1 << 6
 }

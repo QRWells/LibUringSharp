@@ -7,7 +7,7 @@ public readonly struct Completion
     public bool IssSocketNonEmpty => _flags.HasFlag(CompletionFlag.SocketNonEmpty);
     public bool IsNotify => _flags.HasFlag(CompletionFlag.Notify);
 
-    public int BufferId => (int)(UserData >> BufferIdShift);
+    public int BufferId => (int)((uint)_flags >> BufferIdShift);
     public nuint Pointer => new(UserData);
 
     public Completion(int res, ulong userData, uint flags)

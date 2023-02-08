@@ -145,8 +145,6 @@ public class RingTests
         Assert.That(Encoding.UTF8.GetString(buffer[..str.Length]), Is.EqualTo(str));
 
         file.Dispose();
-
-        File.Delete("test.txt");
     }
 
     [Test]
@@ -156,5 +154,11 @@ public class RingTests
         var id = await ring.RegisterBufferGroupAsync(1024, 1);
         Assert.That(id, Is.EqualTo(0));
         ring.UnregisterBufferGroup(id);
+    }
+
+    [OneTimeTearDown]
+    public void TearDown()
+    {
+        File.Delete("test.txt");
     }
 }

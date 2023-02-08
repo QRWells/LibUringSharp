@@ -12,7 +12,7 @@ public unsafe struct BufferRing
 {
     private readonly io_uring_buf_ring* _bufRing;
     public int Id { get; }
-    internal nuint RingAddress => (nuint)_bufRing;
+    internal nuint RingAddress => new((void*)_bufRing);
     internal uint Entries { get; }
     private int Mask => (int)(Entries - 1);
     private int _counter = 0;
@@ -20,8 +20,8 @@ public unsafe struct BufferRing
     public BufferRing(int id, uint entries)
     {
         entries = BitOperations.RoundUpToPowerOf2(entries);
-        var size = (nuint)sizeof(io_uring_buf_ring) + (nuint)(sizeof(io_uring_buf) * entries);
-        _bufRing = (io_uring_buf_ring*)NativeMemory.Alloc(size);
+        var size = 16 * entries;
+        _bufRing = (io_uring_buf_ring*)NativeMemory.AlignedAlloc(size, 4096);
         _bufRing->tail = 0;
         Id = id;
         Entries = entries;
@@ -57,6 +57,6 @@ public unsafe struct BufferRing
 
     public void Release()
     {
-        NativeMemory.Free(_bufRing);
+        NativeMemory.AlignedFree(_bufRing);
     }
 }
