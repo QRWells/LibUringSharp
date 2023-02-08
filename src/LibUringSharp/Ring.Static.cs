@@ -1,3 +1,4 @@
+using System.Numerics;
 using LibUringSharp.Enums;
 using static Linux.LibC;
 
@@ -28,7 +29,7 @@ public sealed partial class Ring
             _ => entries
         };
 
-        entries = Util.RoundUpPow2(entries);
+        entries = BitOperations.RoundUpToPowerOf2(entries);
 
         uint cqEntries;
 

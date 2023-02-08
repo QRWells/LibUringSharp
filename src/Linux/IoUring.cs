@@ -722,12 +722,12 @@ public static partial class LibC
     [StructLayout(LayoutKind.Sequential)]
     public struct io_uring_buf_ring
     {
-        private readonly ulong resv1;
-        private readonly uint resv2;
-        private readonly ushort resv3;
-        private readonly ushort tail;
+        public readonly ulong resv1;
+        public readonly uint resv2;
+        public readonly ushort resv3;
+        public ushort tail;
 
-        private static unsafe io_uring_buf* bufs(io_uring_buf_ring* r)
+        public static unsafe io_uring_buf* bufs(io_uring_buf_ring* r)
         {
             return (io_uring_buf*)r;
         }

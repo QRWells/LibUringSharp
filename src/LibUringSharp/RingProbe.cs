@@ -9,7 +9,7 @@ public sealed class RingProbe
     /// <summary>
     ///     last opcode supported
     /// </summary>
-    private readonly byte last_op;
+    private readonly byte _lastOp;
 
     private readonly bool[] _supportedOps;
 
@@ -25,14 +25,11 @@ public sealed class RingProbe
             var ret = ring.RegisterProbe(probe, 256);
             if (ret >= 0)
             {
-                last_op = probe->last_op;
+                _lastOp = probe->last_op;
                 var ops = io_uring_probe.ops(probe);
-                var ops_len = probe->ops_len;
-                _supportedOps = new bool[ops_len];
-                for (var i = 0; i < ops_len; i++)
-                {
-                    _supportedOps[i] = (ops[i].flags & IO_URING_OP_SUPPORTED) != 0;
-                }
+                var opsLen = probe->ops_len;
+                _supportedOps = new bool[opsLen];
+                for (var i = 0; i < opsLen; i++) _supportedOps[i] = (ops[i].flags & IO_URING_OP_SUPPORTED) != 0;
                 NativeMemory.Free(probe);
                 return;
             }
@@ -46,7 +43,6 @@ public sealed class RingProbe
 
     public bool HasOp(IoUringOp op)
     {
-        if ((byte)op > last_op) return false;
-        return _supportedOps[(byte)op];
+        return (byte)op <= _lastOp && _supportedOps[(byte)op];
     }
 }

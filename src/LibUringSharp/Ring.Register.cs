@@ -6,17 +6,17 @@ using static Linux.LibC;
 
 namespace LibUringSharp;
 
-public unsafe sealed partial class Ring
+public sealed unsafe partial class Ring
 {
-    public void RegisterRingFd()
+    private int RegisterRingFd()
     {
-        var up = new io_uring_rsrc_update { offset = _enterRingFd };
+        var up = new io_uring_rsrc_update { data = _ringFd, offset = uint.MaxValue };
+        var ret = io_uring_register(_ringFd, IORING_REGISTER_RING_FDS, &up, 1);
+        if (ret != 1) return ret;
+        _enterRingFd = new FileDescriptor(unchecked((int)up.offset));
+        _intFlags |= RingInterrupt.RegRing;
 
-        var ret = io_uring_register(_ringFd, IORING_UNREGISTER_RING_FDS, &up, 1);
-
-        if (ret != 1) return;
-        _enterRingFd = _ringFd;
-        _intFlags &= ~RingInterrupt.RegRing;
+        return ret;
     }
 
     public int UnregisterRingFd()
@@ -27,6 +27,7 @@ public unsafe sealed partial class Ring
         if (ret != 1) return ret;
         _enterRingFd = _ringFd;
         _intFlags &= ~RingInterrupt.RegRing;
+
         return ret;
     }
 
@@ -58,17 +59,20 @@ public unsafe sealed partial class Ring
         return io_uring_register(_ringFd, IORING_REGISTER_ENABLE_RINGS, null, 0);
     }
 
-    public int RegisterBufRing(ref io_uring_buf_reg reg)
+    public int RegisterBufRing(ref BufferRing bufferRing)
     {
-        fixed (io_uring_buf_reg* regPtr = &reg)
+        var bufReg = new io_uring_buf_reg
         {
-            return io_uring_register(_ringFd, IORING_REGISTER_PBUF_RING, regPtr, 1);
-        }
+            bgid = (ushort)bufferRing.Id,
+            ring_addr = bufferRing.RingAddress,
+            ring_entries = bufferRing.Entries
+        };
+        return io_uring_register(_ringFd, IORING_REGISTER_PBUF_RING, &bufReg, 1);
     }
 
-    public int UnregisterBufRing(int bgid)
+    public int UnregisterBufRing(int bGId)
     {
-        var reg = new io_uring_buf_reg { bgid = (ushort)bgid };
+        var reg = new io_uring_buf_reg { bgid = (ushort)bGId };
         return io_uring_register(_ringFd, IORING_UNREGISTER_PBUF_RING, &reg, 1);
     }
 
@@ -88,23 +92,23 @@ public unsafe sealed partial class Ring
 
     #region Buffers
 
-    public int RegisterBuffers(Span<iovec> iovecs)
+    public int RegisterBuffers(Span<iovec> ioVectors)
     {
-        fixed (iovec* ptr = iovecs)
+        fixed (iovec* ptr = ioVectors)
         {
-            return io_uring_register(_ringFd, IORING_REGISTER_BUFFERS, ptr, (uint)iovecs.Length);
+            return io_uring_register(_ringFd, IORING_REGISTER_BUFFERS, ptr, (uint)ioVectors.Length);
         }
     }
 
-    public int RegisterBuffersTags(Span<iovec> iovecs, ref ulong tags)
+    public int RegisterBuffersTags(Span<iovec> ioVectors, ref ulong tags)
     {
-        fixed (iovec* ptr = iovecs)
+        fixed (iovec* ptr = ioVectors)
         {
             fixed (ulong* tagsPtr = &tags)
             {
                 var reg = new io_uring_rsrc_register
                 {
-                    nr = (uint)iovecs.Length,
+                    nr = (uint)ioVectors.Length,
                     data = (ulong)ptr,
                     tags = (ulong)tagsPtr
                 };
@@ -114,15 +118,15 @@ public unsafe sealed partial class Ring
         }
     }
 
-    public int RegisterBuffersUpdateTag(uint off, Span<iovec> iovecs, ref ulong tags)
+    public int RegisterBuffersUpdateTag(uint off, Span<iovec> ioVectors, ref ulong tags)
     {
-        fixed (iovec* ptr = iovecs)
+        fixed (iovec* ptr = ioVectors)
         {
             fixed (ulong* tagsPtr = &tags)
             {
                 var reg = new io_uring_rsrc_update2
                 {
-                    nr = (uint)iovecs.Length,
+                    nr = (uint)ioVectors.Length,
                     data = (ulong)ptr,
                     tags = (ulong)tagsPtr,
                     offset = off
@@ -287,9 +291,8 @@ public unsafe sealed partial class Ring
 
     public void RegisterEventFd(FileDescriptor fd)
     {
-        int ret;
         int fileDescriptor = fd;
-        ret = io_uring_register(_ringFd, IORING_REGISTER_EVENTFD, &fileDescriptor, 1);
+        var ret = io_uring_register(_ringFd, IORING_REGISTER_EVENTFD, &fileDescriptor, 1);
 
         if (ret < 0) throw new RegisterEventFdFailedException();
     }

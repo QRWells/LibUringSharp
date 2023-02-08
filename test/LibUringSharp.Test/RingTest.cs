@@ -1,8 +1,10 @@
-namespace LibUringSharp.Test;
-
 using System.Text;
 using LibUringSharp.Submission;
-using static Linux.LibC;
+using Linux;
+
+namespace LibUringSharp.Test;
+
+using static LibC;
 
 public class RingTests
 {
@@ -82,7 +84,7 @@ public class RingTests
     {
         using var ring = new Ring(4);
 
-        var submissions = new Submission[4];
+        var submissions = new Submission.Submission[4];
         Assert.That(ring.GetSubmissions(submissions), Is.EqualTo(4));
         for (ulong i = 0; i < 4; i++)
         {
@@ -108,7 +110,8 @@ public class RingTests
     public void TestFileIO()
     {
         using var ring = new Ring(4);
-        var file = Open("test.txt", OpenOption.Create | OpenOption.Truncate | OpenOption.ReadWrite, new FilePermissions());
+        var file = Open("test.txt", OpenOption.Create | OpenOption.Truncate | OpenOption.ReadWrite,
+            new FilePermissions());
         var str = "Hello World!\n";
 
         Assert.That(ring, Is.Not.Null);

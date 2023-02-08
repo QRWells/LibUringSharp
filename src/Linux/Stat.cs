@@ -4,47 +4,115 @@ namespace Linux;
 
 public static partial class LibC
 {
+    [StructLayout(LayoutKind.Sequential)]
     public struct statx_timestamp
     {
-        long tv_sec;
-        uint tv_nsec;
-        int __reserved;
-    };
+        public long tv_sec;
+        public uint tv_nsec;
+        public int __reserved;
+    }
 
     [StructLayout(LayoutKind.Sequential)]
     public struct statx
     {
-        /* 0x00 */
-        uint stx_mask; /* What results were written [uncond] */
-        uint stx_blksize;  /* Preferred general I/O size [uncond] */
-        ulong stx_attributes;   /* Flags conveying information about the file [uncond] */
-        /* 0x10 */
-        uint stx_nlink;    /* Number of hard links */
-        uint stx_uid;  /* User ID of owner */
-        uint stx_gid;  /* Group ID of owner */
-        ushort stx_mode; /* File mode */
-        ushort __spare0;
-        /* 0x20 */
-        ulong stx_ino;  /* Inode number */
-        ulong stx_size; /* File size */
-        ulong stx_blocks;   /* Number of 512-byte blocks allocated */
-        ulong stx_attributes_mask; /* Mask to show what's supported in stx_attributes */
-        /* 0x40 */
-        statx_timestamp stx_atime;  /* Last access time */
-        statx_timestamp stx_btime;  /* File creation time */
-        statx_timestamp stx_ctime;  /* Last attribute change time */
-        statx_timestamp stx_mtime;  /* Last data modification time */
-        /* 0x80 */
-        uint stx_rdev_major;   /* Device ID of special file [if bdev/cdev] */
-        uint stx_rdev_minor;
-        uint stx_dev_major;    /* ID of device containing file [uncond] */
-        uint stx_dev_minor;
-        /* 0x90 */
-        ulong stx_mnt_id;
-        ulong __spare2;
-        /* 0xa0 */
-        unsafe fixed ulong __spare3[12]; /* Spare space for future expansion */
-        /* 0x100 */
-    }
+        /// <summary>
+        ///     What results were written
+        /// </summary>
+        public readonly uint stx_mask;
 
+        /// <summary>
+        ///     Preferred general I/O size
+        /// </summary>
+        public readonly uint stx_blksize;
+
+        /// <summary>
+        ///     Flags conveying information about the file
+        /// </summary>
+        public readonly ulong stx_attributes;
+
+        /// <summary>
+        ///     Number of hard links
+        /// </summary>
+        public readonly uint stx_nlink;
+
+        /// <summary>
+        ///     User ID of owner
+        /// </summary>
+        public readonly uint stx_uid;
+
+        /// <summary>
+        ///     Group ID of owner
+        /// </summary>
+        public readonly uint stx_gid;
+
+        /// <summary>
+        ///     File mode
+        /// </summary>
+        public readonly ushort stx_mode;
+
+        public readonly ushort __spare0;
+
+        /// <summary>
+        ///     Inode number
+        /// </summary>
+        public readonly ulong stx_ino;
+
+        /// <summary>
+        ///     File size
+        /// </summary>
+        public readonly ulong stx_size;
+
+        /// <summary>
+        ///     Number of 512-byte blocks allocated
+        /// </summary>
+        public readonly ulong stx_blocks;
+
+        /// <summary>
+        ///     Mask to show what's supported in stx_attributes
+        /// </summary>
+        public readonly ulong stx_attributes_mask;
+
+        /// <summary>
+        ///     Last access time
+        /// </summary>
+        public readonly statx_timestamp stx_atime;
+
+        /// <summary>
+        ///     File creation time
+        /// </summary>
+        public readonly statx_timestamp stx_btime;
+
+        /// <summary>
+        ///     Last attribute change time
+        /// </summary>
+        public readonly statx_timestamp stx_ctime;
+
+        /// <summary>
+        ///     Last data modification time
+        /// </summary>
+        public readonly statx_timestamp stx_mtime;
+
+        /// <summary>
+        ///     Device ID of special file [if bdev/cdev]
+        /// </summary>
+        public readonly uint stx_rdev_major;
+
+        public readonly uint stx_rdev_minor;
+
+        /// <summary>
+        ///     ID of device containing file
+        /// </summary>
+        public readonly uint stx_dev_major;
+
+        public readonly uint stx_dev_minor;
+
+        public readonly ulong stx_mnt_id;
+
+        public readonly ulong __spare2;
+
+        /// <summary>
+        ///     Spare space for future expansion
+        /// </summary>
+        public unsafe fixed ulong __spare3[12];
+    }
 }

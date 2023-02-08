@@ -3,25 +3,26 @@ using static System.Numerics.BitOperations;
 
 namespace LibUringSharp;
 
-public unsafe readonly struct BufferGroup
+/// <summary>
+///     Used for <see cref="Submission.Submission.PrepareProvideBuffers" /> and
+///     <see cref="Submission.Submission.PrepareRemoveBuffers" />
+///     <remarks>User needs to call <see cref="Release" /> to free the memory manually</remarks>
+/// </summary>
+public readonly unsafe struct BufferGroup
 {
-    private readonly void* _bufferBase;
-    private readonly uint _bufferSize;
-    private readonly uint _bufferCount;
-
-    public uint TotalSize => _bufferSize * _bufferCount;
-    public uint BufferSize => _bufferSize;
-    public uint BufferCount => _bufferCount;
+    public uint TotalSize => BufferSize * BufferCount;
+    public uint BufferSize { get; }
+    public uint BufferCount { get; }
 
     internal void* GetBuffer(uint index)
     {
-        if (index >= _bufferCount)
+        if (index >= BufferCount)
             throw new ArgumentOutOfRangeException(nameof(index), "index must be less than buffer count");
 
-        return (byte*)_bufferBase + (index * _bufferSize);
+        return (byte*)Base + index * BufferSize;
     }
 
-    internal void* Base => _bufferBase;
+    internal void* Base { get; }
 
     public BufferGroup(uint bufferSize, uint bufferCount)
     {
@@ -34,14 +35,14 @@ public unsafe readonly struct BufferGroup
         bufferSize = RoundUpToPowerOf2(bufferSize);
         bufferCount = RoundUpToPowerOf2(bufferCount);
 
-        _bufferBase = NativeMemory.AlignedAlloc(bufferSize * bufferCount, 8);
-        _bufferSize = bufferSize;
-        _bufferCount = bufferCount;
+        Base = NativeMemory.AlignedAlloc(bufferSize * bufferCount, 8);
+        BufferSize = bufferSize;
+        BufferCount = bufferCount;
     }
 
-    public void Dispose()
+    public void Release()
     {
-        if (_bufferBase != null)
-            NativeMemory.AlignedFree(_bufferBase);
+        if (Base != null)
+            NativeMemory.AlignedFree(Base);
     }
 }

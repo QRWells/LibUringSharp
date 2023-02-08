@@ -1,6 +1,5 @@
 using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
-using LibUringSharp.Enums;
 using Linux.Handles;
 using static Linux.LibC;
 
@@ -139,6 +138,14 @@ public readonly unsafe partial struct Submission
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void PrepareSelectRead(FileDescriptor fd, ushort bufGroup, uint len, ulong offset)
+    {
+        PrepareReadWrite(IoUringOp.Read, fd, null, len, offset);
+        _sqe->flags |= (byte)SubmissionOption.BufferSelect;
+        _sqe->buf_group = bufGroup;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void PrepareWrite(FileDescriptor fd, Span<byte> buf, ulong offset)
     {
         fixed (void* bufPtr = buf)
@@ -155,24 +162,24 @@ public readonly unsafe partial struct Submission
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void PrepareCancel64(ulong user_data, int flags)
+    public void PrepareCancel64(ulong userData, int flags)
     {
         PrepareReadWrite(IoUringOp.AsyncCancel, -1, null, 0, 0);
-        _sqe->addr = user_data;
+        _sqe->addr = userData;
         _sqe->cancel_flags = (uint)flags;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void PrepareCancel(void* user_data, int flags)
+    public void PrepareCancel(void* userData, int flags)
     {
-        PrepareCancel64((ulong)user_data, flags);
+        PrepareCancel64((ulong)userData, flags);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void PrepareCancelFd(int fd, uint flags)
     {
         PrepareReadWrite(IoUringOp.AsyncCancel, fd, null, 0, 0);
-        _sqe->cancel_flags = (uint)flags | IORING_ASYNC_CANCEL_FD;
+        _sqe->cancel_flags = flags | IORING_ASYNC_CANCEL_FD;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -198,7 +205,6 @@ public readonly unsafe partial struct Submission
         {
             fixed (statx* statxPtr = &statx)
             {
-
                 PrepareReadWrite(IoUringOp.StatX, dfd, pathPtr, mask, (ulong)statxPtr);
                 _sqe->statx_flags = (uint)flags;
             }
@@ -223,7 +229,7 @@ public readonly unsafe partial struct Submission
     public void PrepareReceiveMessageMultiShot(FileDescriptor fd, ref msghdr msg, uint flags)
     {
         PrepareReceiveMessage(fd, ref msg, flags);
-        _sqe->ioprio |= (ushort)IORING_RECV_MULTISHOT;
+        _sqe->ioprio |= IORING_RECV_MULTISHOT;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -291,20 +297,20 @@ public readonly unsafe partial struct Submission
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void PrepareTimeoutRemove(ulong user_data, uint flags)
+    public void PrepareTimeoutRemove(ulong userData, uint flags)
     {
         PrepareReadWrite(IoUringOp.TimeoutRemove, -1, null, 0, 0);
-        _sqe->addr = user_data;
+        _sqe->addr = userData;
         _sqe->timeout_flags = flags;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void PrepareTimeoutUpdate(ref __kernel_timespec ts, ulong user_data, uint flags)
+    public void PrepareTimeoutUpdate(ref __kernel_timespec ts, ulong userData, uint flags)
     {
         fixed (__kernel_timespec* tsPtr = &ts)
         {
             PrepareReadWrite(IoUringOp.TimeoutRemove, -1, null, 0, (ulong)tsPtr);
-            _sqe->addr = user_data;
+            _sqe->addr = userData;
             _sqe->timeout_flags = flags | IORING_TIMEOUT_UPDATE;
         }
     }
@@ -314,44 +320,44 @@ public readonly unsafe partial struct Submission
     #region Network
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void PrepareAccept(int fd, ref sockaddr addr, ref uint addrlen, int flags)
+    public void PrepareAccept(int fd, ref sockaddr addr, ref uint addrLen, int flags)
     {
         fixed (sockaddr* addrPtr = &addr)
         {
-            PrepareReadWrite(IoUringOp.Accept, fd, addrPtr, 0, (ulong)addrlen);
+            PrepareReadWrite(IoUringOp.Accept, fd, addrPtr, 0, addrLen);
             _sqe->accept_flags = (uint)flags;
         }
     }
 
     /* accept directly into the fixed file table */
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void PrepareAcceptDirect(int fd, ref sockaddr addr, ref uint addrlen, int flags, uint file_index)
+    public void PrepareAcceptDirect(int fd, ref sockaddr addr, ref uint addrLen, int flags, uint fileIndex)
     {
-        PrepareAccept(fd, ref addr, ref addrlen, flags);
-        SetTargetFixedFile(file_index);
+        PrepareAccept(fd, ref addr, ref addrLen, flags);
+        SetTargetFixedFile(fileIndex);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void PrepareMultishotAccept(int fd, ref sockaddr addr, ref uint addrlen, int flags)
+    public void PrepareMultiShotAccept(int fd, ref sockaddr addr, ref uint addrLen, int flags)
     {
-        PrepareAccept(fd, ref addr, ref addrlen, flags);
+        PrepareAccept(fd, ref addr, ref addrLen, flags);
         _sqe->ioprio |= (ushort)IORING_ACCEPT_MULTISHOT;
     }
 
-    /* multishot accept directly into the fixed file table */
+    /* multi shot accept directly into the fixed file table */
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void PrepareMultishotAcceptDirect(int fd, ref sockaddr addr, ref uint addrlen, int flags)
+    public void PrepareMultiShotAcceptDirect(int fd, ref sockaddr addr, ref uint addrLen, int flags)
     {
-        PrepareMultishotAccept(fd, ref addr, ref addrlen, flags);
+        PrepareMultiShotAccept(fd, ref addr, ref addrLen, flags);
         SetTargetFixedFile(IORING_FILE_INDEX_ALLOC - 1);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void PrepareConnect(int fd, ref sockaddr addr, uint addrlen)
+    public void PrepareConnect(int fd, ref sockaddr addr, uint addrLen)
     {
         fixed (sockaddr* addrPtr = &addr)
         {
-            PrepareReadWrite(IoUringOp.Connect, fd, addrPtr, 0, addrlen);
+            PrepareReadWrite(IoUringOp.Connect, fd, addrPtr, 0, addrLen);
         }
     }
 
@@ -366,27 +372,26 @@ public readonly unsafe partial struct Submission
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void PrepareSend(int sockfd, void* buf, ulong len, int flags)
+    public void PrepareSend(int socketFd, void* buf, ulong len, int flags)
     {
-        PrepareReadWrite(IoUringOp.Send, sockfd, buf, (uint)len, 0);
+        PrepareReadWrite(IoUringOp.Send, socketFd, buf, (uint)len, 0);
         _sqe->msg_flags = (uint)flags;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void PrepareSendZc(int sockfd, void* buf, ulong len, int flags, uint zc_flags)
+    public void PrepareSendZc(int socketFd, void* buf, ulong len, int flags, uint zcFlags)
     {
-        PrepareReadWrite(IoUringOp.SendZc, sockfd, buf, (uint)len, 0);
+        PrepareReadWrite(IoUringOp.SendZc, socketFd, buf, (uint)len, 0);
         _sqe->msg_flags = (uint)flags;
-        _sqe->ioprio = (ushort)zc_flags;
+        _sqe->ioprio = (ushort)zcFlags;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void PrepareSendZcFixed(int sockfd, void* buf, ulong len, int flags, uint zc_flags, uint buf_index)
+    public void PrepareSendZcFixed(int socketFd, void* buf, ulong len, int flags, uint zcFlags, uint bufIndex)
     {
-
-        PrepareSendZc(sockfd, buf, len, flags, zc_flags);
+        PrepareSendZc(socketFd, buf, len, flags, zcFlags);
         _sqe->ioprio |= IORING_RECVSEND_FIXED_BUF;
-        _sqe->buf_index = (ushort)buf_index;
+        _sqe->buf_index = (ushort)bufIndex;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -397,26 +402,26 @@ public readonly unsafe partial struct Submission
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void PrepareSendSetAddr(ref sockaddr dest_addr, ushort addr_len)
+    public void PrepareSendSetAddr(ref sockaddr destAddr, ushort addrLen)
     {
-        fixed (sockaddr* dest_addrPtr = &dest_addr)
+        fixed (sockaddr* destAddrPtr = &destAddr)
         {
-            _sqe->addr2 = (ulong)dest_addrPtr;
-            _sqe->addr_len = addr_len;
+            _sqe->addr2 = (ulong)destAddrPtr;
+            _sqe->addr_len = addrLen;
         }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void PrepareReceive(int sockfd, void* buf, ulong len, int flags)
+    public void PrepareReceive(int socketFd, void* buf, ulong len, int flags)
     {
-        PrepareReadWrite(IoUringOp.Receive, sockfd, buf, (uint)len, 0);
+        PrepareReadWrite(IoUringOp.Receive, socketFd, buf, (uint)len, 0);
         _sqe->msg_flags = (uint)flags;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void PrepareReceiveMultishot(int sockfd, void* buf, ulong len, int flags)
+    public void PrepareReceiveMultiShot(int socketFd, void* buf, ulong len, int flags)
     {
-        PrepareReceive(sockfd, buf, len, flags);
+        PrepareReceive(socketFd, buf, len, flags);
         _sqe->ioprio |= IORING_RECV_MULTISHOT;
     }
 
@@ -425,17 +430,17 @@ public readonly unsafe partial struct Submission
     #region Buffer
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void PrepareProvideBuffers(void* addr, int len, int nr, int bgid, int bid)
+    public void PrepareProvideBuffers(void* addr, int len, int nr, int bufGroupId, int bufId)
     {
-        PrepareReadWrite(IoUringOp.ProvideBuffers, nr, addr, (uint)len, (ulong)bid);
-        _sqe->buf_group = (ushort)bgid;
+        PrepareReadWrite(IoUringOp.ProvideBuffers, nr, addr, (uint)len, (ulong)bufId);
+        _sqe->buf_group = (ushort)bufGroupId;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void PrepareRemoveBuffers(int nr, int bgid)
+    public void PrepareRemoveBuffers(int nr, int bufGroupId)
     {
         PrepareReadWrite(IoUringOp.RemoveBuffers, nr, null, 0, 0);
-        _sqe->buf_group = (ushort)bgid;
+        _sqe->buf_group = (ushort)bufGroupId;
     }
 
     #endregion

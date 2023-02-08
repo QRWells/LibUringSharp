@@ -7,10 +7,6 @@ namespace LibUringSharp.Submission;
 
 public sealed unsafe class SubmissionQueue
 {
-    private const int SqeStateFree = 0;
-    private const int SqeStateReserved = 1;
-    private const int SqeStatePrepared = 2;
-    private const int SqeStateSubmitted = 3;
     private readonly uint* _array;
     private readonly RingSetup _flags;
     private readonly uint* _kHead;
@@ -21,14 +17,10 @@ public sealed unsafe class SubmissionQueue
     private readonly MMapHandle _ringPtr;
     private readonly ulong _ringSize;
     private readonly io_uring_sqe* _sqes;
-    private readonly int[] _sqeState;
     private uint* _kDropped;
     internal uint* _kFlags;
     private uint _sqeHead;
     private uint _sqeTail;
-
-    private int Shift => _flags.HasFlag(RingSetup.Sqe128) ? 1 : 0;
-    private bool IsSQPolling => _flags.HasFlag(RingSetup.KernelSubmissionQueuePolling);
 
     public SubmissionQueue(Ring parent, MMapHandle sqPtr, MMapHandle sqePtr, uint ringSize,
         in io_sqring_offsets offsets,
@@ -54,6 +46,9 @@ public sealed unsafe class SubmissionQueue
         for (var i = 0u; i < _ringEntries; ++i) _array[i] = i;
     }
 
+    private int Shift => _flags.HasFlag(RingSetup.Sqe128) ? 1 : 0;
+    private bool IsSqPolling => _flags.HasFlag(RingSetup.KernelSubmissionQueuePolling);
+
     internal void SetNotFork()
     {
         if (_ringPtr.Address == nint.Zero || _sqes != (void*)nint.Zero)
@@ -75,12 +70,13 @@ public sealed unsafe class SubmissionQueue
         uint head;
         var next = unchecked(_sqeTail + 1);
 
-        if (!IsSQPolling)
+        if (!IsSqPolling)
             head = *_kHead;
         else
             head = Volatile.Read(ref *_kHead);
 
-        if (next - head > _ringEntries) // No more free sqes
+        // No more free submissions
+        if (next - head > _ringEntries)
         {
             submission = default;
             return false;
@@ -99,7 +95,7 @@ public sealed unsafe class SubmissionQueue
 
         _sqeTail = next;
         Volatile.Write(ref _sqeState[idx], SqeStateReserved);
-        submission = new Submission(this, internalSqe, idx);
+        submission = new Submission(internalSqe, idx);
 
         return true;
     }
@@ -112,12 +108,12 @@ public sealed unsafe class SubmissionQueue
         var tail = _sqeTail;
         var next = unchecked(_sqeTail + submissions.Length);
 
-        if (!IsSQPolling)
+        if (!IsSqPolling)
             head = *_kHead;
         else
             head = Volatile.Read(ref *_kHead);
 
-        // No more free sqes
+        // No more free submissions
         if (next - head > _ringEntries) return 0;
 
         _sqeTail = (uint)next;
@@ -134,7 +130,7 @@ public sealed unsafe class SubmissionQueue
             var internalSqe = &_sqes[idx];
             Unsafe.InitBlockUnaligned(internalSqe, 0, (uint)io_uring_sqe.Size);
             Volatile.Write(ref _sqeState[idx], SqeStateReserved);
-            submissions[i] = new Submission(this, internalSqe, idx);
+            submissions[i] = new Submission(internalSqe, idx);
             ++count;
         }
 
@@ -163,7 +159,7 @@ public sealed unsafe class SubmissionQueue
     {
         if (submit == 0)
             return false;
-        if (!IsSQPolling)
+        if (!IsSqPolling)
             return true;
 
         Thread.MemoryBarrier();
@@ -229,7 +225,7 @@ public sealed unsafe class SubmissionQueue
         var tail = _sqeTail;
         if (head == tail) return 0;
 
-        var ktail = Volatile.Read(ref *_kTail);
+        var kTail = Volatile.Read(ref *_kTail);
 
         while (head < tail)
         {
@@ -239,15 +235,25 @@ public sealed unsafe class SubmissionQueue
 
             _sqeState[idx] = SqeStateSubmitted;
             // Increment kernel tail for each consecutive prepare sqe
-            ktail = unchecked(ktail + 1);
+            kTail = unchecked(kTail + 1);
             head = unchecked(head + 1);
         }
 
         // Ensure kernel sees the SQE updates before the tail update.
-        if (!IsSQPolling)
-            *_kTail = ktail;
+        if (!IsSqPolling)
+            *_kTail = kTail;
         else
-            Volatile.Write(ref *_kTail, ktail);
-        return ktail - *_kHead;
+            Volatile.Write(ref *_kTail, kTail);
+        return kTail - *_kHead;
     }
+
+    # region Submission states
+
+    private const int SqeStateFree = 0;
+    private const int SqeStateReserved = 1;
+    private const int SqeStatePrepared = 2;
+    private const int SqeStateSubmitted = 3;
+    private readonly int[] _sqeState;
+
+    # endregion
 }

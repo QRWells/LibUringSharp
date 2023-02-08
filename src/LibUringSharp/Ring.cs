@@ -11,22 +11,7 @@ namespace LibUringSharp;
 
 public sealed partial class Ring : IDisposable
 {
-    private readonly MMapHandle _cqMMapHandle;
-    private readonly CompletionQueue _completionQueue;
-
-    private readonly MMapHandle _sqMMapHandle;
-    private readonly MMapHandle _sqeMMapHandle;
-    private readonly SubmissionQueue _submissionQueue;
-
-    private readonly RingFeature _features;
-    private readonly RingSetup _flags;
-    private readonly FileDescriptor _ringFd;
-    private FileDescriptor _enterRingFd;
-    private RingInterrupt _intFlags;
-
-    private int _lastGroupId = 0;
-    private Dictionary<int, BufferGroup> _bufferGroups = new();
-    private Queue<Action<Submission.Submission>> _pendingSubmissions = new();
+    private readonly Queue<Action<Submission.Submission>> _pendingSubmissions = new();
 
     /// <summary>
     ///     Constructs a new <see cref="Ring" /> with the given number of entries and flags
@@ -45,7 +30,7 @@ public sealed partial class Ring : IDisposable
         if (entries == 0)
             throw new ArgumentException("entries must be greater than 0", nameof(entries));
 
-        entries = (uint)BitOperations.RoundUpToPowerOf2(entries);
+        entries = BitOperations.RoundUpToPowerOf2(entries);
 
         io_uring_params p = default;
         p.flags = (uint)flags;
@@ -83,11 +68,11 @@ public sealed partial class Ring : IDisposable
         _sqeMMapHandle.Dispose();
         _cqMMapHandle.Dispose();
         if (_intFlags.HasFlag(RingInterrupt.RegRing))
-            RegisterRingFd();
+            UnregisterRingFd();
         _ringFd.Dispose();
         _enterRingFd.Dispose();
         foreach (var i in _bufferGroups.Keys)
-            _bufferGroups[i].Dispose();
+            _bufferGroups[i].Release();
     }
 
     /// <summary>
@@ -211,7 +196,6 @@ public sealed partial class Ring : IDisposable
     private void ProcessPendingSubmissions()
     {
         while (_pendingSubmissions.TryPeek(out var action))
-        {
             if (TryGetNextSubmission(out var sqe))
             {
                 action(sqe);
@@ -221,20 +205,25 @@ public sealed partial class Ring : IDisposable
             {
                 break;
             }
-        }
     }
 
-    private bool Issue(Action<Submission.Submission> action)
+    private void Issue(Action<Submission.Submission> action)
     {
         if (TryGetNextSubmission(out var sqe))
         {
             action(sqe);
-            return true;
+            return;
         }
+
         QueueSubmission(action);
-        return false;
     }
 
+    /// <summary>
+    ///     Register a buffer group to the ring.
+    /// </summary>
+    /// <param name="bufferSize">Size of each buffer.</param>
+    /// <param name="bufferCount">Number of buffers.</param>
+    /// <returns>Group id for the buffer group.</returns>
     public Task<int> RegisterBufferGroupAsync(uint bufferSize, uint bufferCount)
     {
         var id = _lastGroupId++;
@@ -245,10 +234,12 @@ public sealed partial class Ring : IDisposable
         {
             unsafe
             {
-                sqe.PrepareProvideBuffers(bufferGroup.Base, (int)bufferGroup.BufferSize, (int)bufferGroup.BufferCount, id, 0);
+                sqe.PrepareProvideBuffers(bufferGroup.Base, (int)bufferGroup.BufferSize, (int)bufferGroup.BufferCount,
+                    id, 0);
                 Prepared(sqe);
                 SubmitAndWait(1);
             }
+
             _bufferGroups.Add(id, bufferGroup);
             tcs.SetResult(id);
         });
@@ -256,6 +247,11 @@ public sealed partial class Ring : IDisposable
         return tcs.Task;
     }
 
+    /// <summary>
+    ///     Unregister a buffer group from the ring. If the buffer group is still in use, the operation will fail.
+    ///     If the buffer group does not exist, the operation will be ignored.
+    /// </summary>
+    /// <param name="bufferGroupId">Group id of the buffer group.</param>
     public void UnregisterBufferGroup(int bufferGroupId)
     {
         if (!_bufferGroups.TryGetValue(bufferGroupId, out var bufferGroup)) return;
@@ -264,12 +260,41 @@ public sealed partial class Ring : IDisposable
 
         Issue(sqe =>
         {
-            unsafe
-            {
-                sqe.PrepareRemoveBuffers((int)bufferGroup.BufferCount, bufferGroupId);
-                Prepared(sqe);
-                SubmitAndWait(1);
-            }
+            sqe.PrepareRemoveBuffers((int)bufferGroup.BufferCount, bufferGroupId);
+            Prepared(sqe);
+            SubmitAndWait(1);
         });
     }
+
+    #region Basic fields
+
+    private readonly FileDescriptor _ringFd;
+    private FileDescriptor _enterRingFd;
+    private RingInterrupt _intFlags;
+    private readonly RingFeature _features;
+    private readonly RingSetup _flags;
+
+    #endregion
+
+    #region Submission Queue
+
+    private readonly SubmissionQueue _submissionQueue;
+    private readonly MMapHandle _sqMMapHandle;
+    private readonly MMapHandle _sqeMMapHandle;
+
+    #endregion
+
+    #region Completion Queue
+
+    private readonly CompletionQueue _completionQueue;
+    private readonly MMapHandle _cqMMapHandle;
+
+    # endregion
+
+    # region Buffer Groups
+
+    private int _lastGroupId;
+    private readonly Dictionary<int, BufferGroup> _bufferGroups = new();
+
+    # endregion
 }

@@ -21,8 +21,6 @@ public sealed unsafe class CompletionQueue
     private uint* _kOverflow;
     private uint _ringEntries;
 
-    private int Shift => _flags.HasFlag(RingSetup.Cqe32) ? 1 : 0;
-
     public CompletionQueue(Ring parent, MMapHandle cqPtr, uint ringSize, in io_cqring_offsets offsets, RingSetup flags)
     {
         _parent = parent;
@@ -39,6 +37,8 @@ public sealed unsafe class CompletionQueue
         if (offsets.flags != 0)
             _kFlags = (uint*)(cqPtr.Address + offsets.flags);
     }
+
+    private int Shift => _flags.HasFlag(RingSetup.Cqe32) ? 1 : 0;
 
     internal void SetNotFork()
     {
@@ -88,7 +88,7 @@ public sealed unsafe class CompletionQueue
     {
         var overflowChecked = false;
 
-    again:
+        again:
         var ready = Ready();
         if (ready != 0)
         {
