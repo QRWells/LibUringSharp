@@ -116,6 +116,35 @@ public readonly unsafe partial struct Submission
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void PrepareOpenAt2(int dfd, string path, ref open_how how)
+    {
+        fixed (char* pathPtr = path)
+        {
+            fixed (open_how* howPtr = &how)
+            {
+                PrepareReadWrite(IoUringOp.OpenAt2, dfd, pathPtr, open_how.Size, (ulong)howPtr);
+            }
+        }
+    }
+
+    /* open directly into the fixed file table */
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void PrepareOpenAt2Direct(int dfd, string path, ref open_how how, uint file_index)
+    {
+        PrepareOpenAt2(dfd, path, ref how);
+        SetTargetFixedFile(file_index);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void PrepareEpollCtl(int epfd, int fd, int op, ref epoll_event ev)
+    {
+        fixed (epoll_event* evPtr = &ev)
+        {
+            PrepareReadWrite(IoUringOp.EpollCtl, epfd, evPtr, (uint)op, (uint)fd);
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void PrepareClose(FileDescriptor fd)
     {
         PrepareReadWrite(IoUringOp.Close, fd, null, 0, 0);

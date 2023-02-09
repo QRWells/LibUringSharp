@@ -132,4 +132,14 @@ public static partial class LibC
         // size_t iov_len;
         public ulong iov_len;
     }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct open_how
+    {
+        public ulong flags;
+        public ulong mode;
+        public ulong resolve;
+
+        public const int Size = 24;
+    }
 }
