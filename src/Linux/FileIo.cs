@@ -142,4 +142,19 @@ public static partial class LibC
 
         public const int Size = 24;
     }
+
+    public enum AtFile
+    {
+        FdCurrentWorkingDirectory = -100,
+        SymLinkNoFollow = 0x100,
+        RemoveDirectory = 0x200,
+        SymLinkFollow = 0x400,
+        EmptyPath = 0x1000,
+        StatXSyncType = 0x6000,
+        StatXSyncAsStat = 0x0000,
+        StatXForceSync = 0x2000,
+        StatXNoSync = 0x4000,
+        Recursive = 0x8000,
+        EAccess = 0x200,
+    }
 }

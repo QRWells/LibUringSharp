@@ -454,6 +454,30 @@ public readonly unsafe partial struct Submission
         _sqe->ioprio |= IORING_RECV_MULTISHOT;
     }
 
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void io_uring_prep_socket(SocketDomain domain, SocketType type, SocketProtocol protocol, uint flags)
+    {
+        PrepareReadWrite(IoUringOp.Socket, (int)domain, null, (uint)protocol, (ulong)type);
+        _sqe->rw_flags = (int)flags;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void io_uring_prep_socket_direct(SocketDomain domain, SocketType type, SocketProtocol protocol, uint file_index, uint flags)
+    {
+        PrepareReadWrite(IoUringOp.Socket, (int)domain, null, (uint)protocol, (ulong)type);
+        _sqe->rw_flags = (int)flags;
+        SetTargetFixedFile(file_index);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void io_uring_prep_socket_direct_alloc(SocketDomain domain, SocketType type, SocketProtocol protocol, uint flags)
+    {
+        PrepareReadWrite(IoUringOp.Socket, (int)domain, null, (uint)protocol, (ulong)type);
+        _sqe->rw_flags = (int)flags;
+        SetTargetFixedFile(IORING_FILE_INDEX_ALLOC - 1);
+    }
+
     #endregion
 
     #region Buffer
@@ -508,6 +532,183 @@ public readonly unsafe partial struct Submission
     {
         PrepareReadWrite(IoUringOp.MAdvise, -1, addr, (uint)length, 0);
         _sqe->fadvise_advice = (uint)advice;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void PrepareSplice(int fd_in, ulong off_in, int fd_out, ulong off_out, uint nbytes, uint splice_flags)
+    {
+        PrepareReadWrite(IoUringOp.Splice, fd_out, null, nbytes, off_out);
+        _sqe->splice_off_in = off_in;
+        _sqe->splice_fd_in = fd_in;
+        _sqe->splice_flags = splice_flags;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void PrepareTee(int fdIn, int fdOut, uint nBytes, uint spliceFlags)
+    {
+        PrepareReadWrite(IoUringOp.Tee, fdOut, null, nBytes, 0);
+        _sqe->splice_off_in = 0;
+        _sqe->splice_fd_in = fdIn;
+        _sqe->splice_flags = spliceFlags;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void PrepareShutdown(int fd, int how)
+    {
+        PrepareReadWrite(IoUringOp.Shutdown, fd, null, (uint)how, 0);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void PrepareRenameAt(int oldFd, string oldPath, int newFd, string newPath, uint flags)
+    {
+        fixed (char* oldPathPtr = oldPath, newPathPtr = newPath)
+        {
+
+            PrepareReadWrite(IoUringOp.RenameAt, oldFd, oldPathPtr, (uint)newFd, (nuint)newPathPtr);
+        }
+        _sqe->rename_flags = flags;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void PrepareRename(string oldPath, string newPath, uint flags)
+    {
+        PrepareRenameAt((int)AtFile.FdCurrentWorkingDirectory, oldPath,
+                        (int)AtFile.FdCurrentWorkingDirectory, newPath, flags);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void PrepareLinkAt(int oldFd, string oldPath, int newFd, string newPath, uint flags)
+    {
+        fixed (char* oldPathPtr = oldPath, newPathPtr = newPath)
+        {
+            PrepareReadWrite(IoUringOp.LinkAt, oldFd, oldPathPtr, (uint)newFd, (nuint)newPathPtr);
+        }
+        _sqe->hardlink_flags = flags;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void PrepareLink(string oldPath, string newPath, uint flags)
+    {
+        PrepareLinkAt((int)AtFile.FdCurrentWorkingDirectory, oldPath,
+                      (int)AtFile.FdCurrentWorkingDirectory, newPath, flags);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void PrepareUnlinkAt(int fd, string path, uint flags)
+    {
+        fixed (char* pathPtr = path)
+        {
+            PrepareReadWrite(IoUringOp.UnlinkAt, fd, pathPtr, 0, 0);
+        }
+        _sqe->unlink_flags = flags;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void PrepareUnlink(string path, uint flags)
+    {
+        PrepareUnlinkAt((int)AtFile.FdCurrentWorkingDirectory, path, flags);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void PrepareSymlinkAt(string target, int newFd, string linkPath)
+    {
+        fixed (char* targetPtr = target, linkPathPtr = linkPath)
+        {
+            PrepareReadWrite(IoUringOp.SymlinkAt, newFd, targetPtr, 0, (nuint)linkPathPtr);
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void PrepareSymlink(string target, string linkPath)
+    {
+        PrepareSymlinkAt(target, (int)AtFile.FdCurrentWorkingDirectory, linkPath);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void PrepareMakeDirAt(int fd, string path, uint mode)
+    {
+        fixed (char* pathPtr = path)
+        {
+            PrepareReadWrite(IoUringOp.MkdirAt, fd, pathPtr, mode, 0);
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void PrepareMakeDir(string path, uint mode)
+    {
+        PrepareMakeDirAt((int)AtFile.FdCurrentWorkingDirectory, path, mode);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void PrepareMessageRingCompletionFlags(int fd, uint len, ulong data, uint flags, uint cqe_flags)
+    {
+        PrepareReadWrite(IoUringOp.MsgRing, fd, null, len, data);
+        _sqe->msg_ring_flags = IORING_MSG_RING_FLAGS_PASS | flags;
+        _sqe->file_index = cqe_flags;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void PrepareMessageRing(int fd, uint len, ulong data, uint flags)
+    {
+        PrepareReadWrite(IoUringOp.MsgRing, fd, null, len, data);
+        _sqe->msg_ring_flags = flags;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void PrepGetXAttr(string name, string path, Span<byte> value)
+    {
+        fixed (char* namePtr = name, pathPtr = path)
+        {
+            fixed (byte* valuePtr = value)
+            {
+                PrepareReadWrite(IoUringOp.GetXAttr, 0, namePtr, (uint)value.Length, (nuint)valuePtr);
+                _sqe->addr3 = (nuint)pathPtr;
+            }
+        }
+        _sqe->xattr_flags = 0;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void PrepareSetXAttr(string name, string path, Span<byte> value, int flags)
+    {
+
+        fixed (char* namePtr = name, pathPtr = path)
+        {
+            fixed (byte* valuePtr = value)
+            {
+                PrepareReadWrite(IoUringOp.SetXAttr, 0, namePtr, (uint)value.Length, (nuint)valuePtr);
+                _sqe->addr3 = (nuint)pathPtr;
+            }
+        }
+        _sqe->xattr_flags = (uint)flags;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void PrepFGetXAttr(
+                           int fd, string name,
+                           Span<byte> value)
+    {
+        fixed (char* namePtr = name)
+        {
+            fixed (byte* valuePtr = value)
+            {
+                PrepareReadWrite(IoUringOp.FGetXAttr, fd, namePtr, (uint)value.Length, (nuint)valuePtr);
+            }
+        }
+        _sqe->xattr_flags = 0;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void PrepareFSetXAttr(int fd, string name, Span<byte> value, int flags)
+    {
+        fixed (char* namePtr = name)
+        {
+            fixed (byte* valuePtr = value)
+            {
+                PrepareReadWrite(IoUringOp.FSetXAttr, fd, namePtr, (uint)value.Length, (nuint)valuePtr);
+            }
+        }
+        _sqe->xattr_flags = (uint)flags;
     }
 
     #endregion

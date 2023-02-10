@@ -1,10 +1,7 @@
 using System.Text;
 using LibUringSharp.Submission;
-using Linux;
 
 namespace LibUringSharp.Test;
-
-using static LibC;
 
 public class RingTests
 {
