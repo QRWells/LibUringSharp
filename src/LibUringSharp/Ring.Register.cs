@@ -59,21 +59,80 @@ public sealed unsafe partial class Ring
         return io_uring_register(_ringFd, IORING_REGISTER_ENABLE_RINGS, null, 0);
     }
 
-    public int RegisterBufRing(ref BufferRing bufferRing)
+    /// <summary>
+    ///     Register a buffer ring to the ring.
+    ///     If the ring with the same id is already registered, the old ring will be unregistered.
+    /// </summary>
+    /// <param name="bufferRing"></param>
+    /// <exception cref="Exception"></exception>
+    public void RegisterBufferRing(ref BufferRing bufferRing)
     {
+        if (_bufferRings.ContainsKey(bufferRing.Id))
+            UnregisterBufferRing(bufferRing.Id);
+
         var bufReg = new io_uring_buf_reg
         {
             bgid = (ushort)bufferRing.Id,
             ring_addr = bufferRing.RingAddress,
             ring_entries = bufferRing.Entries
         };
-        return io_uring_register(_ringFd, IORING_REGISTER_PBUF_RING, &bufReg, 1);
+        var res = io_uring_register(_ringFd, IORING_REGISTER_PBUF_RING, &bufReg, 1);
+        if (res != 0) throw new Exception("Failed to register buffer ring");
+        _bufferRings.Add(bufferRing.Id, bufferRing);
     }
 
-    public int UnregisterBufRing(int bGId)
+    public void UnregisterBufferRing(int groupId)
     {
-        var reg = new io_uring_buf_reg { bgid = (ushort)bGId };
-        return io_uring_register(_ringFd, IORING_UNREGISTER_PBUF_RING, &reg, 1);
+        if (!_bufferRings.ContainsKey(groupId)) return;
+        var reg = new io_uring_buf_reg { bgid = (ushort)groupId };
+        var res = io_uring_register(_ringFd, IORING_UNREGISTER_PBUF_RING, &reg, 1);
+        if (res != 0) throw new Exception("Failed to unregister buffer ring");
+        _bufferRings.Remove(groupId);
+    }
+
+    /// <summary>
+    ///     Register a buffer group to the ring.
+    /// </summary>
+    /// <param name="bufferSize">Size of each buffer.</param>
+    /// <param name="bufferCount">Number of buffers.</param>
+    /// <returns>Group id for the buffer group.</returns>
+    public Task<int> RegisterBufferGroupAsync(uint bufferSize, uint bufferCount)
+    {
+        var id = _lastGroupId++;
+        var bufferGroup = new BufferGroup(bufferSize, bufferCount);
+        var tcs = new TaskCompletionSource<int>();
+
+        Issue(sqe =>
+        {
+            sqe.PrepareProvideBuffers(bufferGroup.Base, (int)bufferGroup.BufferSize, (int)bufferGroup.BufferCount,
+                id, 0);
+            Prepared(sqe);
+            SubmitAndWait(1);
+
+            _bufferGroups.Add(id, bufferGroup);
+            tcs.SetResult(id);
+        });
+
+        return tcs.Task;
+    }
+
+    /// <summary>
+    ///     Unregister a buffer group from the ring. If the buffer group is still in use, the operation will fail.
+    ///     If the buffer group does not exist, the operation will be ignored.
+    /// </summary>
+    /// <param name="bufferGroupId">Group id of the buffer group.</param>
+    public void UnregisterBufferGroup(int bufferGroupId)
+    {
+        if (!_bufferGroups.TryGetValue(bufferGroupId, out var bufferGroup)) return;
+
+        _bufferGroups.Remove(bufferGroupId);
+
+        Issue(sqe =>
+        {
+            sqe.PrepareRemoveBuffers((int)bufferGroup.BufferCount, bufferGroupId);
+            Prepared(sqe);
+            SubmitAndWait(1);
+        });
     }
 
     public int RegisterSyncCancel(ref io_uring_sync_cancel_reg reg)

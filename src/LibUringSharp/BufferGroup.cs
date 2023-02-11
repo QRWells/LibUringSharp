@@ -8,7 +8,7 @@ namespace LibUringSharp;
 ///     <see cref="Submission.Submission.PrepareRemoveBuffers" />
 ///     <remarks>User needs to call <see cref="Release" /> to free the memory manually</remarks>
 /// </summary>
-public readonly unsafe struct BufferGroup
+internal readonly unsafe struct BufferGroup
 {
     public uint TotalSize => BufferSize * BufferCount;
     public uint BufferSize { get; }

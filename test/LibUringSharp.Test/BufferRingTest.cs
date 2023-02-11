@@ -27,7 +27,7 @@ public class BufferRingTest
         using var file = File.Open("test.txt", FileMode.Open, FileAccess.Read, FileShare.Read);
         var fd = file.SafeFileHandle.DangerousGetHandle().ToInt32();
         var bufferRing = new BufferRing(1, BufferCount);
-        Assert.That(ring.RegisterBufRing(ref bufferRing), Is.EqualTo(0));
+        ring.RegisterBufferRing(ref bufferRing);
 
         nint bufPtr;
         Span<byte> buffer;
@@ -65,8 +65,6 @@ public class BufferRingTest
         {
             NativeMemory.AlignedFree(bufPtr.ToPointer());
         }
-
-        bufferRing.Release();
     }
 
     [OneTimeTearDown]

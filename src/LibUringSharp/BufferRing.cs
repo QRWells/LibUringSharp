@@ -5,17 +5,18 @@ using static Linux.LibC;
 namespace LibUringSharp;
 
 /// <summary>
-///     Used for <see cref="Ring.RegisterBufRing" /> and <see cref="Ring.UnregisterBufRing" />
+///     Used for <see cref="Ring.RegisterBufferRing" /> and <see cref="Ring.UnregisterBufRing" />
 ///     <remarks>User needs to call <see cref="Release" /> to free the memory manually</remarks>
 /// </summary>
 public unsafe struct BufferRing
 {
     private readonly io_uring_buf_ring* _bufRing;
     public int Id { get; }
-    internal nuint RingAddress => new((void*)_bufRing);
+    internal nuint RingAddress => new(_bufRing);
     internal uint Entries { get; }
     private int Mask => (int)(Entries - 1);
     private int _counter = 0;
+    private bool _released = false;
 
     public BufferRing(int id, uint entries)
     {
@@ -57,6 +58,8 @@ public unsafe struct BufferRing
 
     public void Release()
     {
+        if (_released) return;
+        _released = true;
         NativeMemory.AlignedFree(_bufRing);
     }
 }

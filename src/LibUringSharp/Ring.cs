@@ -73,6 +73,8 @@ public sealed partial class Ring : IDisposable
         _enterRingFd.Dispose();
         foreach (var i in _bufferGroups.Keys)
             _bufferGroups[i].Release();
+        foreach (var i in _bufferRings.Keys)
+            _bufferRings[i].Release();
     }
 
     /// <summary>
@@ -218,53 +220,6 @@ public sealed partial class Ring : IDisposable
         QueueSubmission(action);
     }
 
-    /// <summary>
-    ///     Register a buffer group to the ring.
-    /// </summary>
-    /// <param name="bufferSize">Size of each buffer.</param>
-    /// <param name="bufferCount">Number of buffers.</param>
-    /// <returns>Group id for the buffer group.</returns>
-    public Task<int> RegisterBufferGroupAsync(uint bufferSize, uint bufferCount)
-    {
-        var id = _lastGroupId++;
-        var bufferGroup = new BufferGroup(bufferSize, bufferCount);
-        var tcs = new TaskCompletionSource<int>();
-
-        Issue(sqe =>
-        {
-            unsafe
-            {
-                sqe.PrepareProvideBuffers(bufferGroup.Base, (int)bufferGroup.BufferSize, (int)bufferGroup.BufferCount,
-                    id, 0);
-                Prepared(sqe);
-                SubmitAndWait(1);
-            }
-
-            _bufferGroups.Add(id, bufferGroup);
-            tcs.SetResult(id);
-        });
-
-        return tcs.Task;
-    }
-
-    /// <summary>
-    ///     Unregister a buffer group from the ring. If the buffer group is still in use, the operation will fail.
-    ///     If the buffer group does not exist, the operation will be ignored.
-    /// </summary>
-    /// <param name="bufferGroupId">Group id of the buffer group.</param>
-    public void UnregisterBufferGroup(int bufferGroupId)
-    {
-        if (!_bufferGroups.TryGetValue(bufferGroupId, out var bufferGroup)) return;
-
-        _bufferGroups.Remove(bufferGroupId);
-
-        Issue(sqe =>
-        {
-            sqe.PrepareRemoveBuffers((int)bufferGroup.BufferCount, bufferGroupId);
-            Prepared(sqe);
-            SubmitAndWait(1);
-        });
-    }
 
     #region Basic fields
 
@@ -295,6 +250,7 @@ public sealed partial class Ring : IDisposable
 
     private int _lastGroupId;
     private readonly Dictionary<int, BufferGroup> _bufferGroups = new();
+    private readonly Dictionary<int, BufferRing> _bufferRings = new();
 
     # endregion
 }

@@ -4,13 +4,6 @@ namespace Linux;
 
 public static partial class LibC
 {
-    [StructLayout(LayoutKind.Sequential)]
-    public struct sockaddr
-    {
-        public ushort sa_family;
-        public unsafe fixed byte sa_data[14];
-    }
-
     public enum SocketDomain
     {
         AF_UNSPEC = 0,
@@ -61,21 +54,7 @@ public static partial class LibC
         AF_QIPCRTR = 42,
         AF_SMC = 43,
         AF_XDP = 44,
-        AF_MCTP = 45,
-    }
-
-    public enum SocketType
-    {
-        SOCK_STREAM = 1,
-        SOCK_DGRAM = 2,
-        SOCK_RAW = 3,
-        SOCK_RDM = 4,
-        SOCK_SEQPACKET = 5,
-        SOCK_DCCP = 6,
-        SOCK_PACKET = 10,
-
-        SOCK_CLOEXEC = 0x80000,
-        SOCK_NONBLOCK = 0x800,
+        AF_MCTP = 45
     }
 
     public enum SocketProtocol
@@ -112,6 +91,27 @@ public static partial class LibC
         Ipv6NoNxt = 59,
         Ipv6Opts = 60,
         RspfIgp = 73,
-        Sctp = 132,
+        Sctp = 132
+    }
+
+    public enum SocketType
+    {
+        SOCK_STREAM = 1,
+        SOCK_DGRAM = 2,
+        SOCK_RAW = 3,
+        SOCK_RDM = 4,
+        SOCK_SEQPACKET = 5,
+        SOCK_DCCP = 6,
+        SOCK_PACKET = 10,
+
+        SOCK_CLOEXEC = 0x80000,
+        SOCK_NONBLOCK = 0x800
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct sockaddr
+    {
+        public ushort sa_family;
+        public unsafe fixed byte sa_data[14];
     }
 }
