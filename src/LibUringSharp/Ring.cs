@@ -1,5 +1,6 @@
 using System.Numerics;
 using System.Runtime.InteropServices;
+using LibUringSharp.Buffer;
 using LibUringSharp.Completion;
 using LibUringSharp.Enums;
 using LibUringSharp.Exceptions;
