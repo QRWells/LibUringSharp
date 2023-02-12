@@ -1,11 +1,12 @@
 using System.Numerics;
 using System.Runtime.InteropServices;
+using LibUringSharp.Buffer;
 using LibUringSharp.Completion;
 using LibUringSharp.Enums;
 using LibUringSharp.Exceptions;
+using LibUringSharp.Linux.Handles;
 using LibUringSharp.Submission;
-using Linux.Handles;
-using static Linux.LibC;
+using static LibUringSharp.Linux.LibC;
 
 namespace LibUringSharp;
 

@@ -1,7 +1,7 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-namespace Linux;
+namespace LibUringSharp.Linux;
 
 public static partial class LibC
 {

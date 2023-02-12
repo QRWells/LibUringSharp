@@ -1,6 +1,6 @@
 using System.Numerics;
 using LibUringSharp.Enums;
-using static Linux.LibC;
+using static LibUringSharp.Linux.LibC;
 
 namespace LibUringSharp;
 
@@ -95,14 +95,14 @@ public sealed partial class Ring
 
     private static unsafe int IncreaseResourceLimitFile(uint nr)
     {
-        rlimit rLimit;
+        RLimit rLimit;
 
         var ret = GetRLimit(ResourceLimit.Files, &rLimit);
         if (ret < 0)
             return ret;
 
-        if (rLimit.rlim_cur >= nr) return 0;
-        rLimit.rlim_cur += nr;
+        if (rLimit.cur >= nr) return 0;
+        rLimit.cur += nr;
         SetRLimit(ResourceLimit.Files, &rLimit);
 
         return 0;

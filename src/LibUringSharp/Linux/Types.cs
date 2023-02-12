@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 
-namespace Linux;
+namespace LibUringSharp.Linux;
 
 public static partial class LibC
 {
@@ -76,14 +76,16 @@ public static partial class LibC
         public long tv_nsec; /* nanoseconds */
     }
 
-    public struct timespec
+    public struct TimeSpec
     {
         public long tv_sec;
         public long tv_nsec;
     }
 
     [StructLayout(LayoutKind.Sequential)]
+#pragma warning disable CS8981
     public struct stat
+#pragma warning restore CS8981
     {
         public ulong st_dev;
         public ulong st_ino;
@@ -96,9 +98,9 @@ public static partial class LibC
         public long st_size;
         public long st_blksize;
         public long st_blocks;
-        public timespec st_atim;
-        public timespec st_mtim;
-        public timespec st_ctim;
+        public TimeSpec st_atim;
+        public TimeSpec st_mtim;
+        public TimeSpec st_ctim;
         public long __unused4;
         public long __unused5;
         public long __unused6;

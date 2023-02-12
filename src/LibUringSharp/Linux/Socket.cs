@@ -1,11 +1,11 @@
 ﻿using System.Runtime.InteropServices;
 
-namespace Linux;
+namespace LibUringSharp.Linux;
 
 public static partial class LibC
 {
     [StructLayout(LayoutKind.Sequential)]
-    public unsafe struct msghdr
+    public unsafe struct MsgHeader
     {
         /// <summary>
         ///     Address to send to/receive from.
@@ -20,7 +20,7 @@ public static partial class LibC
         /// <summary>
         ///     Vector of data to send/receive into.
         /// </summary>
-        private readonly iovec* msg_iov;
+        private readonly IoVector* msg_iov;
 
         /// <summary>
         ///     Number of elements in the vector.

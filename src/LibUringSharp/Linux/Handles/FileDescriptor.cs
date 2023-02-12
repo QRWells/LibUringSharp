@@ -1,6 +1,6 @@
 using Microsoft.Win32.SafeHandles;
 
-namespace Linux.Handles;
+namespace LibUringSharp.Linux.Handles;
 
 public class FileDescriptor : SafeHandleMinusOneIsInvalid
 {

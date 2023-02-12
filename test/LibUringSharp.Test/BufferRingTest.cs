@@ -1,8 +1,10 @@
 ﻿using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using LibUringSharp.Buffer;
 
 namespace LibUringSharp.Test;
 
+[Platform("Linux")]
 public class BufferRingTest
 {
     private const int BufferSize = 1024;
@@ -12,6 +14,9 @@ public class BufferRingTest
     [OneTimeSetUp]
     public void Setup()
     {
+        if (!KernelVersion.IsAtLeast(5, 19))
+            Assert.Ignore("Buffer ring is only supported on Linux 5.19 and above");
+
         var file = File.Open("test.txt", FileMode.OpenOrCreate, FileAccess.Write, FileShare.Write);
         var buffer = new byte[TotalSize];
         for (var i = 0; i < BufferCount; i++) Array.Fill(buffer, (byte)(i + 1), i * BufferSize, BufferSize);
@@ -27,7 +32,7 @@ public class BufferRingTest
         using var file = File.Open("test.txt", FileMode.Open, FileAccess.Read, FileShare.Read);
         var fd = file.SafeFileHandle.DangerousGetHandle().ToInt32();
         var bufferRing = new BufferRing(1, BufferCount);
-        ring.RegisterBufferRing(ref bufferRing);
+        ring.RegisterBufferRing(bufferRing);
 
         nint bufPtr;
         Span<byte> buffer;

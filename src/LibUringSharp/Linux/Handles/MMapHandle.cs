@@ -1,6 +1,6 @@
 using Microsoft.Win32.SafeHandles;
 
-namespace Linux.Handles;
+namespace LibUringSharp.Linux.Handles;
 
 /// <summary>
 ///     Wrapper of a file descriptor that should be disposed of using the "munmap" syscall

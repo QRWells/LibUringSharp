@@ -1,4 +1,4 @@
-﻿namespace Linux;
+﻿namespace LibUringSharp.Linux;
 
 public static partial class LibC
 {

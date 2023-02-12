@@ -1,2 +1,2 @@
 global using NUnit.Framework;
-global using static Linux.LibC;
+global using static LibUringSharp.Linux.LibC;

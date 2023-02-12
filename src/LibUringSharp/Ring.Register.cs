@@ -1,8 +1,9 @@
+using LibUringSharp.Buffer;
 using LibUringSharp.Enums;
 using LibUringSharp.Exceptions;
-using Linux.Exceptions;
-using Linux.Handles;
-using static Linux.LibC;
+using LibUringSharp.Linux.Exceptions;
+using LibUringSharp.Linux.Handles;
+using static LibUringSharp.Linux.LibC;
 
 namespace LibUringSharp;
 
@@ -65,7 +66,7 @@ public sealed unsafe partial class Ring
     /// </summary>
     /// <param name="bufferRing"></param>
     /// <exception cref="Exception"></exception>
-    public void RegisterBufferRing(ref BufferRing bufferRing)
+    public void RegisterBufferRing(in BufferRing bufferRing)
     {
         if (_bufferRings.ContainsKey(bufferRing.Id))
             UnregisterBufferRing(bufferRing.Id);
@@ -151,17 +152,17 @@ public sealed unsafe partial class Ring
 
     #region Buffers
 
-    public int RegisterBuffers(Span<iovec> ioVectors)
+    public int RegisterBuffers(Span<IoVector> ioVectors)
     {
-        fixed (iovec* ptr = ioVectors)
+        fixed (IoVector* ptr = ioVectors)
         {
             return io_uring_register(_ringFd, IORING_REGISTER_BUFFERS, ptr, (uint)ioVectors.Length);
         }
     }
 
-    public int RegisterBuffersTags(Span<iovec> ioVectors, ref ulong tags)
+    public int RegisterBuffersTags(Span<IoVector> ioVectors, ref ulong tags)
     {
-        fixed (iovec* ptr = ioVectors)
+        fixed (IoVector* ptr = ioVectors)
         {
             fixed (ulong* tagsPtr = &tags)
             {
@@ -177,9 +178,9 @@ public sealed unsafe partial class Ring
         }
     }
 
-    public int RegisterBuffersUpdateTag(uint off, Span<iovec> ioVectors, ref ulong tags)
+    public int RegisterBuffersUpdateTag(uint off, Span<IoVector> ioVectors, ref ulong tags)
     {
-        fixed (iovec* ptr = ioVectors)
+        fixed (IoVector* ptr = ioVectors)
         {
             fixed (ulong* tagsPtr = &tags)
             {

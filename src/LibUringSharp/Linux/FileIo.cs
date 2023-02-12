@@ -1,7 +1,7 @@
 using System.Runtime.InteropServices;
-using Linux.Handles;
+using LibUringSharp.Linux.Handles;
 
-namespace Linux;
+namespace LibUringSharp.Linux;
 
 public static partial class LibC
 {
@@ -139,12 +139,9 @@ public static partial class LibC
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    public struct iovec
+    public struct IoVector
     {
-        // void* iov_base;
         public nint iov_base;
-
-        // size_t iov_len;
         public ulong iov_len;
     }
 

@@ -1,11 +1,11 @@
 ﻿using System.Numerics;
 using System.Runtime.InteropServices;
-using static Linux.LibC;
+using static LibUringSharp.Linux.LibC;
 
-namespace LibUringSharp;
+namespace LibUringSharp.Buffer;
 
 /// <summary>
-///     Used for <see cref="Ring.RegisterBufferRing" /> and <see cref="Ring.UnregisterBufRing" />
+///     Used for <see cref="Ring.RegisterBufferRing" /> and <see cref="Ring.UnregisterBufferRing" />
 ///     <remarks>User needs to call <see cref="Release" /> to free the memory manually</remarks>
 /// </summary>
 public unsafe struct BufferRing

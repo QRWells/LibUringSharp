@@ -1,7 +1,7 @@
 using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
-using Linux.Handles;
-using static Linux.LibC;
+using LibUringSharp.Linux.Handles;
+using static LibUringSharp.Linux.LibC;
 
 namespace LibUringSharp.Submission;
 
@@ -31,16 +31,16 @@ public readonly unsafe partial struct Submission
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void PrepareReadV(FileDescriptor fd, Span<iovec> ioVectors, ulong offset)
+    public void PrepareReadV(FileDescriptor fd, Span<IoVector> ioVectors, ulong offset)
     {
-        fixed (iovec* ioVectorsPtr = ioVectors)
+        fixed (IoVector* ioVectorsPtr = ioVectors)
         {
             PrepareReadWrite(IoUringOp.ReadV, fd, ioVectorsPtr, (uint)ioVectors.Length, offset);
         }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void PrepareReadV(FileDescriptor fd, Span<iovec> ioVectors, ulong offset, int flags)
+    public void PrepareReadV(FileDescriptor fd, Span<IoVector> ioVectors, ulong offset, int flags)
     {
         PrepareReadV(fd, ioVectors, offset);
         _sqe->rw_flags = flags;
@@ -57,16 +57,16 @@ public readonly unsafe partial struct Submission
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void PrepareWriteV(FileDescriptor fd, Span<iovec> ioVectors, ulong offset)
+    public void PrepareWriteV(FileDescriptor fd, Span<IoVector> ioVectors, ulong offset)
     {
-        fixed (iovec* ioVectorsPtr = ioVectors)
+        fixed (IoVector* ioVectorsPtr = ioVectors)
         {
             PrepareReadWrite(IoUringOp.WriteV, fd, ioVectorsPtr, (uint)ioVectors.Length, offset);
         }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void PrepareWriteV(FileDescriptor fd, Span<iovec> ioVectors, ulong offset, int flags)
+    public void PrepareWriteV(FileDescriptor fd, Span<IoVector> ioVectors, ulong offset, int flags)
     {
         PrepareWriteV(fd, ioVectors, offset);
         _sqe->rw_flags = flags;
@@ -228,11 +228,11 @@ public readonly unsafe partial struct Submission
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void PrepareStatX(int dfd, string path, int flags, uint mask, ref statx statX)
+    public void PrepareStatX(int dfd, string path, int flags, uint mask, ref StatX statX)
     {
         fixed (char* pathPtr = path)
         {
-            fixed (statx* statXPtr = &statX)
+            fixed (StatX* statXPtr = &statX)
             {
                 PrepareReadWrite(IoUringOp.StatX, dfd, pathPtr, mask, (ulong)statXPtr);
                 _sqe->statx_flags = (uint)flags;
@@ -245,9 +245,9 @@ public readonly unsafe partial struct Submission
     #region Send/Receive
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void PrepareReceiveMessage(FileDescriptor fd, ref msghdr msg, uint flags)
+    public void PrepareReceiveMessage(FileDescriptor fd, ref MsgHeader msg, uint flags)
     {
-        fixed (msghdr* msgPtr = &msg)
+        fixed (MsgHeader* msgPtr = &msg)
         {
             PrepareReadWrite(IoUringOp.ReceiveMsg, fd, msgPtr, 1, 0);
             _sqe->msg_flags = flags;
@@ -255,16 +255,16 @@ public readonly unsafe partial struct Submission
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void PrepareReceiveMessageMultiShot(FileDescriptor fd, ref msghdr msg, uint flags)
+    public void PrepareReceiveMessageMultiShot(FileDescriptor fd, ref MsgHeader msg, uint flags)
     {
         PrepareReceiveMessage(fd, ref msg, flags);
         _sqe->ioprio |= IORING_RECV_MULTISHOT;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void PrepareSendMessage(FileDescriptor fd, ref msghdr msg, uint flags)
+    public void PrepareSendMessage(FileDescriptor fd, ref MsgHeader msg, uint flags)
     {
-        fixed (msghdr* msgPtr = &msg)
+        fixed (MsgHeader* msgPtr = &msg)
         {
             PrepareReadWrite(IoUringOp.SendMsg, fd, msgPtr, 1, 0);
             _sqe->msg_flags = flags;
@@ -349,9 +349,9 @@ public readonly unsafe partial struct Submission
     #region Network
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void PrepareAccept(int fd, ref sockaddr addr, ref uint addrLen, int flags)
+    public void PrepareAccept(int fd, ref SocketAddr addr, ref uint addrLen, int flags)
     {
-        fixed (sockaddr* addrPtr = &addr)
+        fixed (SocketAddr* addrPtr = &addr)
         {
             PrepareReadWrite(IoUringOp.Accept, fd, addrPtr, 0, addrLen);
             _sqe->accept_flags = (uint)flags;
@@ -360,14 +360,14 @@ public readonly unsafe partial struct Submission
 
     /* accept directly into the fixed file table */
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void PrepareAcceptDirect(int fd, ref sockaddr addr, ref uint addrLen, int flags, uint fileIndex)
+    public void PrepareAcceptDirect(int fd, ref SocketAddr addr, ref uint addrLen, int flags, uint fileIndex)
     {
         PrepareAccept(fd, ref addr, ref addrLen, flags);
         SetTargetFixedFile(fileIndex);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void PrepareMultiShotAccept(int fd, ref sockaddr addr, ref uint addrLen, int flags)
+    public void PrepareMultiShotAccept(int fd, ref SocketAddr addr, ref uint addrLen, int flags)
     {
         PrepareAccept(fd, ref addr, ref addrLen, flags);
         _sqe->ioprio |= (ushort)IORING_ACCEPT_MULTISHOT;
@@ -375,16 +375,16 @@ public readonly unsafe partial struct Submission
 
     /* multi shot accept directly into the fixed file table */
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void PrepareMultiShotAcceptDirect(int fd, ref sockaddr addr, ref uint addrLen, int flags)
+    public void PrepareMultiShotAcceptDirect(int fd, ref SocketAddr addr, ref uint addrLen, int flags)
     {
         PrepareMultiShotAccept(fd, ref addr, ref addrLen, flags);
         SetTargetFixedFile(IORING_FILE_INDEX_ALLOC - 1);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void PrepareConnect(int fd, ref sockaddr addr, uint addrLen)
+    public void PrepareConnect(int fd, ref SocketAddr addr, uint addrLen)
     {
-        fixed (sockaddr* addrPtr = &addr)
+        fixed (SocketAddr* addrPtr = &addr)
         {
             PrepareReadWrite(IoUringOp.Connect, fd, addrPtr, 0, addrLen);
         }
@@ -424,16 +424,16 @@ public readonly unsafe partial struct Submission
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void PrepareSendMessageZc(int fd, ref msghdr msg, uint flags)
+    public void PrepareSendMessageZc(int fd, ref MsgHeader msg, uint flags)
     {
         PrepareSendMessage(fd, ref msg, flags);
         _sqe->opcode = (byte)IoUringOp.SendMsgZc;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void PrepareSendSetAddr(ref sockaddr destAddr, ushort addrLen)
+    public void PrepareSendSetAddr(ref SocketAddr destAddr, ushort addrLen)
     {
-        fixed (sockaddr* destAddrPtr = &destAddr)
+        fixed (SocketAddr* destAddrPtr = &destAddr)
         {
             _sqe->addr2 = (ulong)destAddrPtr;
             _sqe->addr_len = addrLen;
