@@ -1,7 +1,7 @@
 ﻿using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-namespace Linux;
+namespace LibUringSharp.Linux;
 
 public static partial class LibC
 {
@@ -101,24 +101,24 @@ public static partial class LibC
     private const int NrSetRLimit = 164;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static unsafe int GetRLimit(ResourceLimit resource, rlimit* rlim)
+    public static unsafe int GetRLimit(ResourceLimit resource, RLimit* rlim)
     {
         return (int)syscall(NrGetRLimit, (int)resource, rlim);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static unsafe int SetRLimit(ResourceLimit resource, rlimit* rlim)
+    public static unsafe int SetRLimit(ResourceLimit resource, RLimit* rlim)
     {
         return (int)syscall(NrSetRLimit, (int)resource, rlim);
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    public struct rlimit
+    public struct RLimit
     {
         /* The current (soft) limit.  */
-        public ulong rlim_cur;
+        public ulong cur;
 
         /* The hard limit.  */
-        public ulong rlim_max;
+        public ulong max;
     }
 }

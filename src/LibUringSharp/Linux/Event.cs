@@ -1,7 +1,7 @@
 using System.Runtime.InteropServices;
-using Linux.Handles;
+using LibUringSharp.Linux.Handles;
 
-namespace Linux;
+namespace LibUringSharp.Linux;
 
 public static partial class LibC
 {

@@ -1,7 +1,7 @@
 using System.Runtime.CompilerServices;
 using LibUringSharp.Enums;
-using Linux.Handles;
-using static Linux.LibC;
+using LibUringSharp.Linux.Handles;
+using static LibUringSharp.Linux.LibC;
 
 namespace LibUringSharp.Completion;
 

@@ -1,4 +1,4 @@
-﻿namespace Linux.Exceptions;
+﻿namespace LibUringSharp.Linux.Exceptions;
 
 public class ErrnoException : IOException
 {

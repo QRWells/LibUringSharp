@@ -27,7 +27,7 @@ public class BufferRingTest
         using var file = File.Open("test.txt", FileMode.Open, FileAccess.Read, FileShare.Read);
         var fd = file.SafeFileHandle.DangerousGetHandle().ToInt32();
         var bufferRing = new BufferRing(1, BufferCount);
-        ring.RegisterBufferRing(ref bufferRing);
+        ring.RegisterBufferRing(bufferRing);
 
         nint bufPtr;
         Span<byte> buffer;

@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 
-namespace Linux;
+namespace LibUringSharp.Linux;
 
 public static partial class LibC
 {
@@ -13,7 +13,7 @@ public static partial class LibC
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    public struct statx
+    public struct StatX
     {
         /// <summary>
         ///     What results were written

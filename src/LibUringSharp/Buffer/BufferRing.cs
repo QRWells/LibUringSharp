@@ -1,6 +1,6 @@
 ﻿using System.Numerics;
 using System.Runtime.InteropServices;
-using static Linux.LibC;
+using static LibUringSharp.Linux.LibC;
 
 namespace LibUringSharp;
 

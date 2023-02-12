@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 
-namespace Linux;
+namespace LibUringSharp.Linux;
 
 public static partial class LibC
 {
@@ -109,7 +109,7 @@ public static partial class LibC
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    public struct sockaddr
+    public struct SocketAddr
     {
         public ushort sa_family;
         public unsafe fixed byte sa_data[14];
