@@ -46,6 +46,11 @@ public unsafe struct BufferRing
 
         _counter++;
     }
+    
+    public void Add(SafeBuffer buffer, ushort bufferId, int bufferOffset)
+    {
+        Add(buffer.Pointer, (uint)buffer.Length, bufferId, bufferOffset);
+    }
 
     /// <summary>
     ///     Commit <code>count</code> previously added buffers to the kernel.
