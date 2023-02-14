@@ -6,7 +6,7 @@ A C# wrapper for the Linux io_uring API like [liburing](https://github.com/axboe
 
 - [x] io_uring probe
 - [x] Basic Operations
-- [ ] Select Buffers
+- [x] Select Buffers
 - [ ] Async/Await Support
 - [ ] Kernel version check
 
