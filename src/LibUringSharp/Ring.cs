@@ -199,6 +199,7 @@ public sealed partial class Ring : IDisposable
     private void ProcessPendingSubmissions()
     {
         while (_pendingSubmissions.TryPeek(out var action))
+        {
             if (TryGetNextSubmission(out var sqe))
             {
                 action(sqe);
@@ -208,6 +209,7 @@ public sealed partial class Ring : IDisposable
             {
                 break;
             }
+        }
     }
 
     private void Issue(Action<Submission.Submission> action)

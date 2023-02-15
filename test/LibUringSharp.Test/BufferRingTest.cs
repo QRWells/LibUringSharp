@@ -1,6 +1,7 @@
 ﻿using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using LibUringSharp.Buffer;
+using SafeBuffer = LibUringSharp.Buffer.SafeBuffer;
 
 namespace LibUringSharp.Test;
 
@@ -34,16 +35,12 @@ public class BufferRingTest
         var bufferRing = new BufferRing(1, BufferCount);
         ring.RegisterBufferRing(bufferRing);
 
-        nint bufPtr;
-        Span<byte> buffer;
+        var buffers = new SafeBuffer[BufferCount];
 
-        unsafe
+        for (var i = 0; i < BufferCount; i++)
         {
-            var buf = NativeMemory.AlignedAlloc(TotalSize, BufferSize);
-            bufPtr = new nint(buf);
-            buffer = new Span<byte>(buf, TotalSize);
-            for (var i = 0; i < BufferCount; i++)
-                bufferRing.Add(Unsafe.Add<byte>(buf, i * BufferSize), BufferSize, (ushort)(i + 1), i);
+            buffers[i] = SafeBuffer.Create(BufferSize);
+            bufferRing.Add(buffers[i], (ushort)(i + 1), i);
         }
 
         bufferRing.Commit();
@@ -63,12 +60,12 @@ public class BufferRingTest
             Assert.That(ring.TryGetCompletion(out var comp), Is.True);
             Assert.That(comp.IsBuffered, Is.True);
             Assert.That(comp.Result, Is.EqualTo(BufferSize));
-            Assert.That(comp.UserData, Is.EqualTo(buffer[(comp.BufferId - 1) * BufferSize]));
+            Assert.That(comp.UserData, Is.EqualTo(buffers[comp.BufferId - 1][0]));
         }
 
-        unsafe
+        for (var i = 0; i < BufferCount; i++)
         {
-            NativeMemory.AlignedFree(bufPtr.ToPointer());
+            buffers[i].Dispose();
         }
     }
 

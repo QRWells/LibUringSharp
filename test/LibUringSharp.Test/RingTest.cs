@@ -1,4 +1,5 @@
 using System.Text;
+using LibUringSharp.Buffer;
 using LibUringSharp.Submission;
 
 namespace LibUringSharp.Test;
@@ -106,7 +107,7 @@ public class RingTests
     [Test]
     public void TestFileIO()
     {
-        using var ring = new Ring(4);
+        using var ring = new Ring(8);
         var file = Open("test.txt", OpenOption.Create | OpenOption.Truncate | OpenOption.ReadWrite,
             new FilePermissions());
         var str = "Hello World!\n";
@@ -118,20 +119,27 @@ public class RingTests
         // Write to the file
         var bytes = Encoding.UTF8.GetBytes(str);
         sub.Option |= SubmissionOption.IoLink;
-        sub.PrepareWrite(file, bytes, 0);
+        using var buffer = new FixedArray<byte>(bytes);
+        unsafe
+        {
+            sub.PrepareWrite(file, (void*)buffer.DangerousGetHandle(), buffer.Length, 0);
+        }
         ring.Prepared(in sub);
 
         Assert.That(ring.Submit(), Is.EqualTo(1));
 
-        if (!ring.TryGetCompletion(out var com))
-            Assert.Fail("Failed to get completion");
+        Completion.Completion com;
+        while (!ring.TryGetCompletion(out com)) ; // busy wait
         Assert.That(com.Result, Is.EqualTo(str.Length));
 
         // Read the file
-        var buffer = new byte[16];
+        using var readBuf = SafeBuffer.Create(32);
         if (!ring.TryGetNextSubmission(out sub))
             Assert.Fail("Failed to get next submission queue entry");
-        sub.PrepareRead(file, buffer, 0);
+        unsafe
+        {
+            sub.PrepareRead(file, readBuf.Pointer, readBuf.Length, 0);
+        }
         ring.Prepared(in sub);
 
         Assert.That(ring.Submit(), Is.EqualTo(1));
@@ -139,7 +147,7 @@ public class RingTests
         if (!ring.TryGetCompletion(out com))
             Assert.Fail("Failed to get completion");
         Assert.That(com.Result, Is.EqualTo(str.Length));
-        Assert.That(Encoding.UTF8.GetString(buffer[..str.Length]), Is.EqualTo(str));
+        Assert.That(Encoding.UTF8.GetString(readBuf[..str.Length]), Is.EqualTo(str));
 
         file.Dispose();
     }
