@@ -31,47 +31,47 @@ public readonly unsafe partial struct Submission
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareReadV(FileDescriptor fd, IoVector* ioVectors, int length, ulong offset)
+    public void PrepareReadV(FileDescriptor fd, IoVector* ioVectors, int length, ulong offset)
     {
         PrepareReadWrite(IoUringOp.ReadV, fd, ioVectors, (uint)length, offset);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareReadV(FileDescriptor fd, IoVector* ioVectors, int length, ulong offset, int flags)
+    public void PrepareReadV(FileDescriptor fd, IoVector* ioVectors, int length, ulong offset, int flags)
     {
         PrepareReadV(fd, ioVectors, length, offset);
         _sqe->rw_flags = flags;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareReadFixed(FileDescriptor fd, void* buf, int length, ulong offset, int bufIndex)
+    public void PrepareReadFixed(FileDescriptor fd, void* buf, int length, ulong offset, int bufIndex)
     {
         PrepareReadWrite(IoUringOp.ReadFixed, fd, buf, (uint)length, offset);
         _sqe->buf_index = (ushort)bufIndex;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareWriteV(FileDescriptor fd, IoVector* ioVectors, int length, ulong offset)
+    public void PrepareWriteV(FileDescriptor fd, IoVector* ioVectors, int length, ulong offset)
     {
         PrepareReadWrite(IoUringOp.WriteV, fd, ioVectors, (uint)length, offset);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareWriteV(FileDescriptor fd, IoVector* ioVectors, int length, ulong offset, int flags)
+    public void PrepareWriteV(FileDescriptor fd, IoVector* ioVectors, int length, ulong offset, int flags)
     {
         PrepareWriteV(fd, ioVectors, length, offset);
         _sqe->rw_flags = flags;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareWriteFixed(FileDescriptor fd, void* buf, int length, ulong offset, int bufIndex)
+    public void PrepareWriteFixed(FileDescriptor fd, void* buf, int length, ulong offset, int bufIndex)
     {
         PrepareReadWrite(IoUringOp.WriteFixed, fd, buf, (uint)length, offset);
         _sqe->buf_index = (ushort)bufIndex;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void SetTargetFixedFile(uint fileIndex)
+    public void SetTargetFixedFile(uint fileIndex)
     {
         // 0 means no fixed files, indexes should be encoded as "index + 1"
         _sqe->file_index = fileIndex + 1;
@@ -79,7 +79,7 @@ public readonly unsafe partial struct Submission
 
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareOpenAt(int dfd, char* path, int flags, uint mode)
+    public void PrepareOpenAt(int dfd, char* path, int flags, uint mode)
     {
         PrepareReadWrite(IoUringOp.OpenAt, dfd, path, mode, 0);
         _sqe->open_flags = (uint)flags;
@@ -94,53 +94,53 @@ public readonly unsafe partial struct Submission
     /// <param name="mode"></param>
     /// <param name="fileIndex"></param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareOpenAtDirect(int dfd, char* path, int flags, uint mode, uint fileIndex)
+    public void PrepareOpenAtDirect(int dfd, char* path, int flags, uint mode, uint fileIndex)
     {
         PrepareOpenAt(dfd, path, flags, mode);
         SetTargetFixedFile(fileIndex);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareOpenAt2(int dfd, char* path, open_how* how)
+    public void PrepareOpenAt2(int dfd, char* path, open_how* how)
     {
         PrepareReadWrite(IoUringOp.OpenAt2, dfd, path, open_how.Size, (ulong)how);
     }
 
     /* open directly into the fixed file table */
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareOpenAt2Direct(int dfd, char* path, open_how* how, uint fileIndex)
+    public void PrepareOpenAt2Direct(int dfd, char* path, open_how* how, uint fileIndex)
     {
         PrepareOpenAt2(dfd, path, how);
         SetTargetFixedFile(fileIndex);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareEpollCtl(int epFd, int fd, int op, epoll_event* ev)
+    public void PrepareEpollCtl(int epFd, int fd, int op, epoll_event* ev)
     {
         PrepareReadWrite(IoUringOp.EpollCtl, epFd, ev, (uint)op, (uint)fd);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareClose(FileDescriptor fd)
+    public void PrepareClose(FileDescriptor fd)
     {
         PrepareReadWrite(IoUringOp.Close, fd, null, 0, 0);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareCloseDirect(uint fileIndex)
+    public void PrepareCloseDirect(uint fileIndex)
     {
         PrepareClose(0);
         SetTargetFixedFile(fileIndex);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareRead(FileDescriptor fd, void* buf, int length, ulong offset)
+    public void PrepareRead(FileDescriptor fd, void* buf, int length, ulong offset)
     {
         PrepareReadWrite(IoUringOp.Read, fd, buf, (uint)length, offset);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareSelectRead(FileDescriptor fd, ushort bufGroup, uint len, ulong offset)
+    public void PrepareSelectRead(FileDescriptor fd, ushort bufGroup, uint len, ulong offset)
     {
         PrepareReadWrite(IoUringOp.Read, fd, null, len, offset);
         _sqe->flags |= (byte)SubmissionOption.BufferSelect;
@@ -148,20 +148,20 @@ public readonly unsafe partial struct Submission
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareWrite(FileDescriptor fd, void* buf, int length, ulong offset)
+    public void PrepareWrite(FileDescriptor fd, void* buf, int length, ulong offset)
     {
         PrepareReadWrite(IoUringOp.Write, fd, buf, (uint)length, offset);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareSyncFileRange(int fd, uint len, ulong offset, int flags)
+    public void PrepareSyncFileRange(int fd, uint len, ulong offset, int flags)
     {
         PrepareReadWrite(IoUringOp.SyncFileRange, fd, null, len, offset);
         _sqe->sync_range_flags = (uint)flags;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareCancel64(nuint userData, int flags)
+    public void PrepareCancel64(nuint userData, int flags)
     {
         PrepareReadWrite(IoUringOp.AsyncCancel, -1, null, 0, 0);
         _sqe->addr = userData;
@@ -169,33 +169,33 @@ public readonly unsafe partial struct Submission
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareCancel(void* userData, int flags)
+    public void PrepareCancel(void* userData, int flags)
     {
         PrepareCancel64((nuint)userData, flags);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareCancelFd(int fd, uint flags)
+    public void PrepareCancelFd(int fd, uint flags)
     {
         PrepareReadWrite(IoUringOp.AsyncCancel, fd, null, 0, 0);
         _sqe->cancel_flags = flags | IORING_ASYNC_CANCEL_FD;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareFAllocate(FileDescriptor fd, int mode, long offset, long len)
+    public void PrepareFAllocate(FileDescriptor fd, int mode, long offset, long len)
     {
         PrepareReadWrite(IoUringOp.FAllocate, fd, null, (uint)mode, (ulong)offset);
         _sqe->addr = (nuint)len;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareFilesUpdate(int* fds, int num, int offset)
+    public void PrepareFilesUpdate(int* fds, int num, int offset)
     {
         PrepareReadWrite(IoUringOp.FilesUpdate, -1, fds, (uint)num, (ulong)offset);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareStatX(int dfd, char* path, int flags, uint mask, StatX* statX)
+    public void PrepareStatX(int dfd, char* path, int flags, uint mask, StatX* statX)
     {
         PrepareReadWrite(IoUringOp.StatX, dfd, path, mask, (ulong)statX);
         _sqe->statx_flags = (uint)flags;
@@ -206,7 +206,7 @@ public readonly unsafe partial struct Submission
     #region Send/Receive
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareReceiveMessage(FileDescriptor fd, MsgHeader* msg, uint flags)
+    public void PrepareReceiveMessage(FileDescriptor fd, MsgHeader* msg, uint flags)
     {
 
         PrepareReadWrite(IoUringOp.ReceiveMsg, fd, msg, 1, 0);
@@ -214,14 +214,14 @@ public readonly unsafe partial struct Submission
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareReceiveMessageMultiShot(FileDescriptor fd, MsgHeader* msg, uint flags)
+    public void PrepareReceiveMessageMultiShot(FileDescriptor fd, MsgHeader* msg, uint flags)
     {
         PrepareReceiveMessage(fd, msg, flags);
         _sqe->ioprio |= IORING_RECV_MULTISHOT;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareSendMessage(FileDescriptor fd, MsgHeader* msg, uint flags)
+    public void PrepareSendMessage(FileDescriptor fd, MsgHeader* msg, uint flags)
     {
         PrepareReadWrite(IoUringOp.SendMsg, fd, msg, 1, 0);
         _sqe->msg_flags = flags;
@@ -238,28 +238,28 @@ public readonly unsafe partial struct Submission
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PreparePollAdd(FileDescriptor fd, uint pollMask)
+    public void PreparePollAdd(FileDescriptor fd, uint pollMask)
     {
         PrepareReadWrite(IoUringOp.PollAdd, fd, null, 0, 0);
         _sqe->poll32_events = PreparePollMask(pollMask);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PreparePollMultiShot(FileDescriptor fd, uint pollMask)
+    public void PreparePollMultiShot(FileDescriptor fd, uint pollMask)
     {
         PreparePollAdd(fd, pollMask);
         _sqe->len = IORING_POLL_ADD_MULTI;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PreparePollRemove(ulong userData)
+    public void PreparePollRemove(ulong userData)
     {
         PrepareReadWrite(IoUringOp.PollRemove, -1, null, 0, 0);
         _sqe->addr = userData;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PreparePollUpdate(ulong oldUserData, ulong newUserData, uint pollMask, uint flags)
+    public void PreparePollUpdate(ulong oldUserData, ulong newUserData, uint pollMask, uint flags)
     {
         PrepareReadWrite(IoUringOp.PollRemove, -1, null, flags,
             newUserData);
@@ -272,14 +272,14 @@ public readonly unsafe partial struct Submission
     #region Timeout
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareTimeout(__kernel_timespec* ts, uint count, uint flags)
+    public void PrepareTimeout(__kernel_timespec* ts, uint count, uint flags)
     {
         PrepareReadWrite(IoUringOp.Timeout, -1, ts, 1, count);
         _sqe->timeout_flags = flags;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareTimeoutRemove(ulong userData, uint flags)
+    public void PrepareTimeoutRemove(ulong userData, uint flags)
     {
         PrepareReadWrite(IoUringOp.TimeoutRemove, -1, null, 0, 0);
         _sqe->addr = userData;
@@ -287,7 +287,7 @@ public readonly unsafe partial struct Submission
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareTimeoutUpdate(__kernel_timespec* ts, ulong userData, uint flags)
+    public void PrepareTimeoutUpdate(__kernel_timespec* ts, ulong userData, uint flags)
     {
         PrepareReadWrite(IoUringOp.TimeoutRemove, -1, null, 0, (ulong)ts);
         _sqe->addr = userData;
@@ -299,7 +299,7 @@ public readonly unsafe partial struct Submission
     #region Network
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareAccept(int fd, SocketAddr* addr, uint* addrLen, int flags)
+    public void PrepareAccept(int fd, SocketAddr* addr, uint* addrLen, int flags)
     {
         PrepareReadWrite(IoUringOp.Accept, fd, addr, 0, (ulong)addrLen);
         _sqe->accept_flags = (uint)flags;
@@ -307,14 +307,14 @@ public readonly unsafe partial struct Submission
 
     /* accept directly into the fixed file table */
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareAcceptDirect(int fd, SocketAddr* addr, uint* addrLen, int flags, uint fileIndex)
+    public void PrepareAcceptDirect(int fd, SocketAddr* addr, uint* addrLen, int flags, uint fileIndex)
     {
         PrepareAccept(fd, addr, addrLen, flags);
         SetTargetFixedFile(fileIndex);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareMultiShotAccept(int fd, SocketAddr* addr, uint* addrLen, int flags)
+    public void PrepareMultiShotAccept(int fd, SocketAddr* addr, uint* addrLen, int flags)
     {
         PrepareAccept(fd, addr, addrLen, flags);
         _sqe->ioprio |= (ushort)IORING_ACCEPT_MULTISHOT;
@@ -322,34 +322,34 @@ public readonly unsafe partial struct Submission
 
     /* multi shot accept directly into the fixed file table */
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareMultiShotAcceptDirect(int fd, SocketAddr* addr, uint* addrLen, int flags)
+    public void PrepareMultiShotAcceptDirect(int fd, SocketAddr* addr, uint* addrLen, int flags)
     {
         PrepareMultiShotAccept(fd, addr, addrLen, flags);
         SetTargetFixedFile(IORING_FILE_INDEX_ALLOC - 1);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareConnect(int fd, SocketAddr* addr, uint addrLen)
+    public void PrepareConnect(int fd, SocketAddr* addr, uint addrLen)
     {
         PrepareReadWrite(IoUringOp.Connect, fd, addr, 0, addrLen);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareLinkTimeout(__kernel_timespec* ts, uint flags)
+    public void PrepareLinkTimeout(__kernel_timespec* ts, uint flags)
     {
         PrepareReadWrite(IoUringOp.LinkTimeout, -1, ts, 1, 0);
         _sqe->timeout_flags = flags;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareSend(int socketFd, void* buf, ulong len, int flags)
+    public void PrepareSend(int socketFd, void* buf, ulong len, int flags)
     {
         PrepareReadWrite(IoUringOp.Send, socketFd, buf, (uint)len, 0);
         _sqe->msg_flags = (uint)flags;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareSendZc(int socketFd, void* buf, ulong len, int flags, uint zcFlags)
+    public void PrepareSendZc(int socketFd, void* buf, ulong len, int flags, uint zcFlags)
     {
         PrepareReadWrite(IoUringOp.SendZc, socketFd, buf, (uint)len, 0);
         _sqe->msg_flags = (uint)flags;
@@ -357,7 +357,7 @@ public readonly unsafe partial struct Submission
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareSendZcFixed(int socketFd, void* buf, ulong len, int flags, uint zcFlags, uint bufIndex)
+    public void PrepareSendZcFixed(int socketFd, void* buf, ulong len, int flags, uint zcFlags, uint bufIndex)
     {
         PrepareSendZc(socketFd, buf, len, flags, zcFlags);
         _sqe->ioprio |= IORING_RECVSEND_FIXED_BUF;
@@ -365,28 +365,28 @@ public readonly unsafe partial struct Submission
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareSendMessageZc(int fd, MsgHeader* msg, uint flags)
+    public void PrepareSendMessageZc(int fd, MsgHeader* msg, uint flags)
     {
         PrepareSendMessage(fd, msg, flags);
         _sqe->opcode = (byte)IoUringOp.SendMsgZc;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareSendSetAddr(SocketAddr* destAddr, ushort addrLen)
+    public void PrepareSendSetAddr(SocketAddr* destAddr, ushort addrLen)
     {
         _sqe->addr2 = (ulong)destAddr;
         _sqe->addr_len = addrLen;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareReceive(int socketFd, void* buf, ulong len, int flags)
+    public void PrepareReceive(int socketFd, void* buf, ulong len, int flags)
     {
         PrepareReadWrite(IoUringOp.Receive, socketFd, buf, (uint)len, 0);
         _sqe->msg_flags = (uint)flags;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareReceiveMultiShot(int socketFd, void* buf, ulong len, int flags)
+    public void PrepareReceiveMultiShot(int socketFd, void* buf, ulong len, int flags)
     {
         PrepareReceive(socketFd, buf, len, flags);
         _sqe->ioprio |= IORING_RECV_MULTISHOT;
@@ -394,14 +394,14 @@ public readonly unsafe partial struct Submission
 
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void io_uring_prep_socket(SocketDomain domain, SocketType type, SocketProtocol protocol, uint flags)
+    public void io_uring_prep_socket(SocketDomain domain, SocketType type, SocketProtocol protocol, uint flags)
     {
         PrepareReadWrite(IoUringOp.Socket, (int)domain, null, (uint)protocol, (ulong)type);
         _sqe->rw_flags = (int)flags;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void io_uring_prep_socket_direct(SocketDomain domain, SocketType type, SocketProtocol protocol,
+    public void io_uring_prep_socket_direct(SocketDomain domain, SocketType type, SocketProtocol protocol,
         uint fileIndex, uint flags)
     {
         PrepareReadWrite(IoUringOp.Socket, (int)domain, null, (uint)protocol, (ulong)type);
@@ -410,7 +410,7 @@ public readonly unsafe partial struct Submission
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void io_uring_prep_socket_direct_alloc(SocketDomain domain, SocketType type, SocketProtocol protocol,
+    public void io_uring_prep_socket_direct_alloc(SocketDomain domain, SocketType type, SocketProtocol protocol,
         uint flags)
     {
         PrepareReadWrite(IoUringOp.Socket, (int)domain, null, (uint)protocol, (ulong)type);
@@ -423,14 +423,14 @@ public readonly unsafe partial struct Submission
     #region Buffer
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareProvideBuffers(void* addr, int len, int nr, int bufGroupId, int bufId)
+    public void PrepareProvideBuffers(void* addr, int len, int nr, int bufGroupId, int bufId)
     {
         PrepareReadWrite(IoUringOp.ProvideBuffers, nr, addr, (uint)len, (ulong)bufId);
         _sqe->buf_group = (ushort)bufGroupId;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareRemoveBuffers(int nr, int bufGroupId)
+    public void PrepareRemoveBuffers(int nr, int bufGroupId)
     {
         PrepareReadWrite(IoUringOp.RemoveBuffers, nr, null, 0, 0);
         _sqe->buf_group = (ushort)bufGroupId;
@@ -441,14 +441,14 @@ public readonly unsafe partial struct Submission
     #region Misc
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareFSync(FileDescriptor fd, uint fsyncFlags)
+    public void PrepareFSync(FileDescriptor fd, uint fsyncFlags)
     {
         PrepareReadWrite(IoUringOp.FSync, fd, null, 0, 0);
         _sqe->fsync_flags = fsyncFlags;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareNop(ulong userData = 0, SubmissionOption options = SubmissionOption.None, ushort personality = 0)
+    public void PrepareNop(ulong userData = 0, SubmissionOption options = SubmissionOption.None, ushort personality = 0)
     {
         unchecked
         {
@@ -461,21 +461,21 @@ public readonly unsafe partial struct Submission
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareFAdvise(int fd, ulong offset, long len, int advice)
+    public void PrepareFAdvise(int fd, ulong offset, long len, int advice)
     {
         PrepareReadWrite(IoUringOp.FAdvise, fd, null, (uint)len, offset);
         _sqe->fadvise_advice = (uint)advice;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareMAdvise(void* addr, long length, int advice)
+    public void PrepareMAdvise(void* addr, long length, int advice)
     {
         PrepareReadWrite(IoUringOp.MAdvise, -1, addr, (uint)length, 0);
         _sqe->fadvise_advice = (uint)advice;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareSplice(int fdIn, ulong offIn, int fdOut, ulong offOut, uint bytes, uint spliceFlags)
+    public void PrepareSplice(int fdIn, ulong offIn, int fdOut, ulong offOut, uint bytes, uint spliceFlags)
     {
         PrepareReadWrite(IoUringOp.Splice, fdOut, null, bytes, offOut);
         _sqe->splice_off_in = offIn;
@@ -484,7 +484,7 @@ public readonly unsafe partial struct Submission
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareTee(int fdIn, int fdOut, uint nBytes, uint spliceFlags)
+    public void PrepareTee(int fdIn, int fdOut, uint nBytes, uint spliceFlags)
     {
         PrepareReadWrite(IoUringOp.Tee, fdOut, null, nBytes, 0);
         _sqe->splice_off_in = 0;
@@ -493,27 +493,27 @@ public readonly unsafe partial struct Submission
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareShutdown(int fd, int how)
+    public void PrepareShutdown(int fd, int how)
     {
         PrepareReadWrite(IoUringOp.Shutdown, fd, null, (uint)how, 0);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareRenameAt(int oldFd, char* oldPath, int newFd, char* newPath, uint flags)
+    public void PrepareRenameAt(int oldFd, char* oldPath, int newFd, char* newPath, uint flags)
     {
         PrepareReadWrite(IoUringOp.RenameAt, oldFd, oldPath, (uint)newFd, (nuint)newPath);
         _sqe->rename_flags = flags;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareRename(char* oldPath, char* newPath, uint flags)
+    public void PrepareRename(char* oldPath, char* newPath, uint flags)
     {
         PrepareRenameAt((int)AtFile.FdCurrentWorkingDirectory, oldPath,
             (int)AtFile.FdCurrentWorkingDirectory, newPath, flags);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareLinkAt(int oldFd, char* oldPath, int newFd, char* newPath, uint flags)
+    public void PrepareLinkAt(int oldFd, char* oldPath, int newFd, char* newPath, uint flags)
     {
         PrepareReadWrite(IoUringOp.LinkAt, oldFd, oldPath, (uint)newFd, (nuint)newPath);
 
@@ -521,14 +521,14 @@ public readonly unsafe partial struct Submission
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareLink(char* oldPath, char* newPath, uint flags)
+    public void PrepareLink(char* oldPath, char* newPath, uint flags)
     {
         PrepareLinkAt((int)AtFile.FdCurrentWorkingDirectory, oldPath,
             (int)AtFile.FdCurrentWorkingDirectory, newPath, flags);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareUnlinkAt(int fd, char* path, uint flags)
+    public void PrepareUnlinkAt(int fd, char* path, uint flags)
     {
         PrepareReadWrite(IoUringOp.UnlinkAt, fd, path, 0, 0);
 
@@ -536,37 +536,37 @@ public readonly unsafe partial struct Submission
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareUnlink(char* path, uint flags)
+    public void PrepareUnlink(char* path, uint flags)
     {
         PrepareUnlinkAt((int)AtFile.FdCurrentWorkingDirectory, path, flags);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareSymlinkAt(char* target, int newFd, char* linkPath)
+    public void PrepareSymlinkAt(char* target, int newFd, char* linkPath)
     {
         PrepareReadWrite(IoUringOp.SymlinkAt, newFd, target, 0, (nuint)linkPath);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareSymlink(char* target, char* linkPath)
+    public void PrepareSymlink(char* target, char* linkPath)
     {
         PrepareSymlinkAt(target, (int)AtFile.FdCurrentWorkingDirectory, linkPath);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareMakeDirAt(int fd, char* path, uint mode)
+    public void PrepareMakeDirAt(int fd, char* path, uint mode)
     {
         PrepareReadWrite(IoUringOp.MkdirAt, fd, path, mode, 0);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareMakeDir(char* path, uint mode)
+    public void PrepareMakeDir(char* path, uint mode)
     {
         PrepareMakeDirAt((int)AtFile.FdCurrentWorkingDirectory, path, mode);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareMessageRingCompletionFlags(int fd, uint len, ulong data, uint flags, uint cqeFlags)
+    public void PrepareMessageRingCompletionFlags(int fd, uint len, ulong data, uint flags, uint cqeFlags)
     {
         PrepareReadWrite(IoUringOp.MsgRing, fd, null, len, data);
         _sqe->msg_ring_flags = IORING_MSG_RING_FLAGS_PASS | flags;
@@ -574,14 +574,14 @@ public readonly unsafe partial struct Submission
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareMessageRing(int fd, uint len, ulong data, uint flags)
+    public void PrepareMessageRing(int fd, uint len, ulong data, uint flags)
     {
         PrepareReadWrite(IoUringOp.MsgRing, fd, null, len, data);
         _sqe->msg_ring_flags = flags;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepGetXAttr(char* name, char* path, void* value, int length)
+    public void PrepGetXAttr(char* name, char* path, void* value, int length)
     {
         PrepareReadWrite(IoUringOp.GetXAttr, 0, name, (uint)length, (nuint)value);
         _sqe->addr3 = (nuint)path;
@@ -590,7 +590,7 @@ public readonly unsafe partial struct Submission
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareSetXAttr(char* name, char* path, void* value, int length, int flags)
+    public void PrepareSetXAttr(char* name, char* path, void* value, int length, int flags)
     {
         PrepareReadWrite(IoUringOp.SetXAttr, 0, name, (uint)length, (nuint)value);
         _sqe->addr3 = (nuint)path;
@@ -599,7 +599,7 @@ public readonly unsafe partial struct Submission
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepFGetXAttr(int fd, char* name, void* value, int length)
+    public void PrepFGetXAttr(int fd, char* name, void* value, int length)
     {
         PrepareReadWrite(IoUringOp.FGetXAttr, fd, name, (uint)length, (nuint)value);
 
@@ -607,7 +607,7 @@ public readonly unsafe partial struct Submission
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void PrepareFSetXAttr(int fd, char* name, void* value, int length, int flags)
+    public void PrepareFSetXAttr(int fd, char* name, void* value, int length, int flags)
     {
         PrepareReadWrite(IoUringOp.FSetXAttr, fd, name, (uint)length, (nuint)value);
         _sqe->xattr_flags = (uint)flags;
