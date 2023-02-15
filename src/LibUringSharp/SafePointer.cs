@@ -1,45 +1,43 @@
 ﻿using System.Runtime.InteropServices;
+using Microsoft.Win32.SafeHandles;
 
 namespace LibUringSharp;
+
+public abstract class SafePointer : SafeHandleZeroOrMinusOneIsInvalid
+{
+    protected SafePointer() : base(true)
+    {
+    }
+
+    public abstract override bool IsInvalid { get; }
+
+    protected abstract override bool ReleaseHandle();
+}
 
 /// <summary>
 ///     Used to wrap a pointer to a struct or class in a safe way.
 /// </summary>
 /// <typeparam name="T">The type of the object.</typeparam>
-public sealed class SafePointer<T> : IDisposable
+public sealed class FixedPointer<T> : SafePointer
 {
     private GCHandle _handle;
-    private nint _ptr = nint.Zero;
 
-    public SafePointer(T ptr)
+    public FixedPointer(ref T value)
     {
-        if (null == ptr) return;
-        _handle = GCHandle.Alloc(ptr, GCHandleType.Pinned);
-        _ptr = _handle.AddrOfPinnedObject();
+        _handle = GCHandle.Alloc(value, GCHandleType.Pinned);
+        SetHandle(_handle.AddrOfPinnedObject());
     }
 
-    public bool IsDisposed { get; private set; }
+    public override bool IsInvalid => !_handle.IsAllocated;
 
-    public unsafe void* Pointer => (void*)_ptr;
-
-    public void Dispose()
+    protected override bool ReleaseHandle()
     {
-        if (IsDisposed) return;
-        IsDisposed = true;
-        if (!_handle.IsAllocated) return;
         _handle.Free();
-        _ptr = nint.Zero;
-
-        GC.SuppressFinalize(this);
+        return true;
     }
 
-    ~SafePointer()
+    public static implicit operator nint(FixedPointer<T> pointer)
     {
-        Dispose();
-    }
-
-    public static implicit operator nint(SafePointer<T> ptr)
-    {
-        return ptr._ptr;
+        return pointer.handle;
     }
 }
