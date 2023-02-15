@@ -35,7 +35,7 @@ internal readonly unsafe struct BufferGroup
         bufferSize = RoundUpToPowerOf2(bufferSize);
         bufferCount = RoundUpToPowerOf2(bufferCount);
 
-        Base = NativeMemory.AlignedAlloc(bufferSize * bufferCount, 8);
+        Base = NativeMemory.AlignedAlloc(bufferSize * bufferCount, 4096);
         BufferSize = bufferSize;
         BufferCount = bufferCount;
     }

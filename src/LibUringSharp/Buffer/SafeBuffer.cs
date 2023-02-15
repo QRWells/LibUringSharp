@@ -28,14 +28,30 @@ public sealed class SafeBuffer : IDisposable
         set => ToSpan()[index] = value;
     }
 
-    public unsafe void* Pointer => _handle.AddrOfPinnedObject().ToPointer();
+    public unsafe void* Pointer => _handle.IsAllocated ? _handle.AddrOfPinnedObject().ToPointer() : (void*)_ptr;
     public int Length { get; }
 
     public void Dispose()
     {
         if (_disposed) return;
-        if (!_handle.IsAllocated) return;
-        _handle.Free();
+        if (!_handle.IsAllocated)
+        {
+            if (_ptr != nint.Zero) // made by Create
+            {
+                unsafe
+                {
+                    NativeMemory.AlignedFree((void*)_ptr);
+                }
+            }
+            else // uninitialized
+            {
+                return;
+            }
+        }
+        else // made by ctor
+        {
+            _handle.Free();
+        }
         _ptr = nint.Zero;
         _disposed = true;
     }
@@ -55,6 +71,7 @@ public sealed class SafeBuffer : IDisposable
     /// <returns>A new <see cref="SafeBuffer" />.</returns>
     public static SafeBuffer Create(nuint length)
     {
+        if (length == 0) throw new ArgumentOutOfRangeException(nameof(length));
         SafeBuffer res;
         unsafe
         {
