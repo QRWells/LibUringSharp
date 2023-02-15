@@ -2,7 +2,7 @@
 
 namespace LibUringSharp.Buffer;
 
-public sealed class SafeBuffer : IDisposable
+public struct SafeBuffer : IDisposable
 {
     private bool _disposed;
     private GCHandle _handle;
@@ -26,6 +26,11 @@ public sealed class SafeBuffer : IDisposable
     {
         get => ToSpan()[index];
         set => ToSpan()[index] = value;
+    }
+
+    public ReadOnlySpan<byte> this[Range range]
+    {
+        get => ToSpan()[range];
     }
 
     public unsafe void* Pointer => _handle.IsAllocated ? _handle.AddrOfPinnedObject().ToPointer() : (void*)_ptr;

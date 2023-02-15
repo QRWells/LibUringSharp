@@ -43,7 +43,6 @@ public class BufferRingTest
             bufferRing.Add(buffers[i], (ushort)(i + 1), i);
         }
 
-
         bufferRing.Commit();
 
         for (var i = 0; i < BufferCount; i++)

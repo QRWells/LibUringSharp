@@ -7,4 +7,8 @@
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
 
+    <ItemGroup>
+        <InternalsVisibleTo Include="LibUringSharp.Test" />
+    </ItemGroup>
+
 </Project>
