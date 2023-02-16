@@ -17,6 +17,7 @@
         <RepositoryUrl>https://github.com/QRWells/LibUringSharp</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
         <PackageTags>io_uring</PackageTags>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
 
         <PublishRepositoryUrl>true</PublishRepositoryUrl>
         <EmbedUntrackedSources>true</EmbedUntrackedSources>
@@ -41,6 +42,10 @@
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="..\..\README.md" Pack="true" PackagePath="\"/>
     </ItemGroup>
 
 </Project>
