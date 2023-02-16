@@ -55,7 +55,7 @@ jobs:
         with:
           dotnet-version: 7.0.x
       - name: Pack
-        run: dotnet pack --configuration Release /p:Version=${VERSION} --output .
+        run: dotnet pack src/LibUringSharp --configuration Release /p:Version=${VERSION} --output .
       - name: Push to github packages
         run: dotnet nuget push QRWells.LibUringSharp.${VERSION}.nupkg --source https://nuget.pkg.github.com/QRWells/index.json --api-key ${GITHUB_TOKEN}
       - name: Push to nuget
