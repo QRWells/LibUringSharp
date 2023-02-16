@@ -23,7 +23,6 @@
         <IncludeSymbols>true</IncludeSymbols>
         <SymbolPackageFormat>snupkg</SymbolPackageFormat>
         <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
-        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
         <NeutralLanguage>en-US</NeutralLanguage>
         <GenerateDocumentationFile>True</GenerateDocumentationFile>
         <NoWarn>$(NoWarn);CS1591</NoWarn>

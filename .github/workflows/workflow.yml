@@ -41,7 +41,7 @@ jobs:
   
   release:
     if: github.event_name == 'release'
-    needs: [ build, test ]
+    needs: [ test ]
     runs-on: ubuntu-latest
     env:
       GITHUB_TOKEN: ${{ secrets.PACKAGE_KEY }}
