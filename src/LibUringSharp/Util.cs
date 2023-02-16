@@ -1,6 +1,6 @@
-using LibUringSharp.Linux.Handles;
+using QRWells.LibUringSharp.Linux.Handles;
 
-namespace LibUringSharp;
+namespace QRWells.LibUringSharp;
 
 public static class Util
 {

@@ -1,8 +1,8 @@
 ﻿using System.Numerics;
 using System.Runtime.InteropServices;
-using static LibUringSharp.Linux.LibC;
+using static QRWells.LibUringSharp.Linux.LibC;
 
-namespace LibUringSharp.Buffer;
+namespace QRWells.LibUringSharp.Buffer;
 
 /// <summary>
 ///     Used for <see cref="Ring.RegisterBufferRing" /> and <see cref="Ring.UnregisterBufferRing" />

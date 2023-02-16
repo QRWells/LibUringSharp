@@ -1,7 +1,7 @@
 using System.Runtime.InteropServices;
 using static System.Numerics.BitOperations;
 
-namespace LibUringSharp.Buffer;
+namespace QRWells.LibUringSharp.Buffer;
 
 /// <summary>
 ///     Used for <see cref="Submission.Submission.PrepareProvideBuffers" /> and

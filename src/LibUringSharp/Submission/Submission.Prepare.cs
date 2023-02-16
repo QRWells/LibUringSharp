@@ -1,9 +1,9 @@
 using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
-using LibUringSharp.Linux.Handles;
-using static LibUringSharp.Linux.LibC;
+using QRWells.LibUringSharp.Linux.Handles;
+using static QRWells.LibUringSharp.Linux.LibC;
 
-namespace LibUringSharp.Submission;
+namespace QRWells.LibUringSharp.Submission;
 
 public readonly unsafe partial struct Submission
 {

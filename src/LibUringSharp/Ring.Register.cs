@@ -1,11 +1,11 @@
-using LibUringSharp.Buffer;
-using LibUringSharp.Enums;
-using LibUringSharp.Exceptions;
-using LibUringSharp.Linux.Exceptions;
-using LibUringSharp.Linux.Handles;
-using static LibUringSharp.Linux.LibC;
+using QRWells.LibUringSharp.Buffer;
+using QRWells.LibUringSharp.Enums;
+using QRWells.LibUringSharp.Exceptions;
+using QRWells.LibUringSharp.Linux.Exceptions;
+using QRWells.LibUringSharp.Linux.Handles;
+using static QRWells.LibUringSharp.Linux.LibC;
 
-namespace LibUringSharp;
+namespace QRWells.LibUringSharp;
 
 public sealed unsafe partial class Ring
 {

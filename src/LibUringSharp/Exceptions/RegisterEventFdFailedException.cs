@@ -1,6 +1,6 @@
 using System.Runtime.Serialization;
 
-namespace LibUringSharp.Exceptions;
+namespace QRWells.LibUringSharp.Exceptions;
 
 [Serializable]
 internal class RegisterEventFdFailedException : Exception

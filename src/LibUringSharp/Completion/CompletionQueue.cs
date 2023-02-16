@@ -1,9 +1,9 @@
 using System.Runtime.CompilerServices;
-using LibUringSharp.Enums;
-using LibUringSharp.Linux.Handles;
-using static LibUringSharp.Linux.LibC;
+using QRWells.LibUringSharp.Enums;
+using QRWells.LibUringSharp.Linux.Handles;
+using static QRWells.LibUringSharp.Linux.LibC;
 
-namespace LibUringSharp.Completion;
+namespace QRWells.LibUringSharp.Completion;
 
 public sealed unsafe class CompletionQueue
 {

@@ -1,4 +1,4 @@
-namespace LibUringSharp.Completion;
+namespace QRWells.LibUringSharp.Completion;
 
 public readonly struct Completion
 {

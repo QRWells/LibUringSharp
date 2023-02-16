@@ -1,4 +1,4 @@
-namespace LibUringSharp.Enums;
+namespace QRWells.LibUringSharp.Enums;
 
 [Flags]
 public enum RingInterrupt : byte

@@ -1,9 +1,7 @@
-﻿using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
-using LibUringSharp.Buffer;
-using SafeBuffer = LibUringSharp.Buffer.SafeBuffer;
+﻿using QRWells.LibUringSharp.Buffer;
+using SafeBuffer = QRWells.LibUringSharp.Buffer.SafeBuffer;
 
-namespace LibUringSharp.Test;
+namespace QRWells.LibUringSharp.Test;
 
 [Platform("Linux")]
 public class BufferRingTest

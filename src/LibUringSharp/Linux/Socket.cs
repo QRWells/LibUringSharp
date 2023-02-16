@@ -1,6 +1,6 @@
 ﻿using System.Runtime.InteropServices;
 
-namespace LibUringSharp.Linux;
+namespace QRWells.LibUringSharp.Linux;
 
 public static partial class LibC
 {

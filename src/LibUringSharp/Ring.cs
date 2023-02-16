@@ -1,14 +1,14 @@
 using System.Numerics;
 using System.Runtime.InteropServices;
-using LibUringSharp.Buffer;
-using LibUringSharp.Completion;
-using LibUringSharp.Enums;
-using LibUringSharp.Exceptions;
-using LibUringSharp.Linux.Handles;
-using LibUringSharp.Submission;
-using static LibUringSharp.Linux.LibC;
+using QRWells.LibUringSharp.Buffer;
+using QRWells.LibUringSharp.Completion;
+using QRWells.LibUringSharp.Enums;
+using QRWells.LibUringSharp.Exceptions;
+using QRWells.LibUringSharp.Linux.Handles;
+using QRWells.LibUringSharp.Submission;
+using static QRWells.LibUringSharp.Linux.LibC;
 
-namespace LibUringSharp;
+namespace QRWells.LibUringSharp;
 
 public sealed partial class Ring : IDisposable
 {

@@ -1,4 +1,4 @@
-﻿namespace LibUringSharp.Linux.Exceptions;
+﻿namespace QRWells.LibUringSharp.Linux.Exceptions;
 
 public class ErrnoException : IOException
 {

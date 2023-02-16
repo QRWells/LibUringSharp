@@ -1,8 +1,8 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using static LibUringSharp.Linux.LibC;
+using static QRWells.LibUringSharp.Linux.LibC;
 
-namespace LibUringSharp;
+namespace QRWells.LibUringSharp;
 
 public sealed class RingProbe
 {

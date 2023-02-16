@@ -1,8 +1,8 @@
 using System.Numerics;
-using LibUringSharp.Enums;
-using static LibUringSharp.Linux.LibC;
+using QRWells.LibUringSharp.Enums;
+using static QRWells.LibUringSharp.Linux.LibC;
 
-namespace LibUringSharp;
+namespace QRWells.LibUringSharp;
 
 public sealed partial class Ring
 {

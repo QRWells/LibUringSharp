@@ -1,6 +1,6 @@
 using Microsoft.Win32.SafeHandles;
 
-namespace LibUringSharp.Linux.Handles;
+namespace QRWells.LibUringSharp.Linux.Handles;
 
 public class FileDescriptor : SafeHandleMinusOneIsInvalid
 {

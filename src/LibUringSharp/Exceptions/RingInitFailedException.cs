@@ -1,4 +1,4 @@
-namespace LibUringSharp.Exceptions;
+namespace QRWells.LibUringSharp.Exceptions;
 
 public class RingInitFailedException : IOException
 {

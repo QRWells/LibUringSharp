@@ -1,6 +1,6 @@
-using static LibUringSharp.Linux.LibC;
+using static QRWells.LibUringSharp.Linux.LibC;
 
-namespace LibUringSharp.Submission;
+namespace QRWells.LibUringSharp.Submission;
 
 public readonly unsafe partial struct Submission
 {

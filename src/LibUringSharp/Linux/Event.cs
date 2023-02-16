@@ -1,7 +1,7 @@
 using System.Runtime.InteropServices;
-using LibUringSharp.Linux.Handles;
+using QRWells.LibUringSharp.Linux.Handles;
 
-namespace LibUringSharp.Linux;
+namespace QRWells.LibUringSharp.Linux;
 
 public static partial class LibC
 {

@@ -1,8 +1,8 @@
 using System.Text;
-using LibUringSharp.Buffer;
-using LibUringSharp.Submission;
+using QRWells.LibUringSharp.Buffer;
+using QRWells.LibUringSharp.Submission;
 
-namespace LibUringSharp.Test;
+namespace QRWells.LibUringSharp.Test;
 
 public class RingTests
 {

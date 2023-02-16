@@ -1,4 +1,4 @@
-﻿namespace LibUringSharp;
+﻿namespace QRWells.LibUringSharp;
 
 public readonly struct KernelVersion : IComparable<KernelVersion>
 {

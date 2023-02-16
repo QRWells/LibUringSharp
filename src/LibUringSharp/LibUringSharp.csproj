@@ -1,14 +1,47 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net7.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <LangVersion>latest</LangVersion>
+        <TargetFramework>net7.0</TargetFramework>
+
+        <Title>QRWells.LibUringSharp</Title>
+        <PackageId>QRWells.LibUringSharp</PackageId>
+        <Copyright>Copyright © Qirui Wang 2023</Copyright>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <Authors>Qirui Wang</Authors>
+        <Description>A C# wrapper for the Linux io_uring API.</Description>
+        <PackageProjectUrl>https://github.com/QRWells/LibUringSharp</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/QRWells/LibUringSharp</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <PackageTags>io_uring</PackageTags>
+
+        <PublishRepositoryUrl>true</PublishRepositoryUrl>
+        <EmbedUntrackedSources>true</EmbedUntrackedSources>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+        <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <NeutralLanguage>en-US</NeutralLanguage>
+        <GenerateDocumentationFile>True</GenerateDocumentationFile>
+        <NoWarn>$(NoWarn);CS1591</NoWarn>
+        <AssemblyName>QRWells.LibUringSharp</AssemblyName>
+        <RootNamespace>QRWells.LibUringSharp</RootNamespace>
+        <Company>QRWells</Company>
+
     </PropertyGroup>
 
     <ItemGroup>
         <InternalsVisibleTo Include="LibUringSharp.Test" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
     </ItemGroup>
 
 </Project>

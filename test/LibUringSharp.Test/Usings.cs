@@ -1,2 +1,2 @@
 global using NUnit.Framework;
-global using static LibUringSharp.Linux.LibC;
+global using static QRWells.LibUringSharp.Linux.LibC;

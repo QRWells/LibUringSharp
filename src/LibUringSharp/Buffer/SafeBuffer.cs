@@ -1,6 +1,6 @@
 ﻿using System.Runtime.InteropServices;
 
-namespace LibUringSharp.Buffer;
+namespace QRWells.LibUringSharp.Buffer;
 
 public struct SafeBuffer : IDisposable
 {
