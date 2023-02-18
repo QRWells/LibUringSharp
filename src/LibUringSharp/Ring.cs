@@ -65,13 +65,13 @@ public sealed partial class Ring : IDisposable
 
     public void Dispose()
     {
-        _sqMMapHandle.Dispose();
-        _sqeMMapHandle.Dispose();
-        _cqMMapHandle.Dispose();
+        _sqMMapHandle?.Dispose();
+        _sqeMMapHandle?.Dispose();
+        _cqMMapHandle?.Dispose();
         if (_intFlags.HasFlag(RingInterrupt.RegRing))
             UnregisterRingFd();
-        _ringFd.Dispose();
-        _enterRingFd.Dispose();
+        _ringFd?.Dispose();
+        _enterRingFd?.Dispose();
         foreach (var i in _bufferGroups.Keys)
             _bufferGroups[i].Release();
         foreach (var i in _bufferRings.Keys)
@@ -203,6 +203,7 @@ public sealed partial class Ring : IDisposable
             if (TryGetNextSubmission(out var sqe))
             {
                 action(sqe);
+                Prepared(sqe);
                 _pendingSubmissions.Dequeue();
             }
             else
@@ -212,11 +213,12 @@ public sealed partial class Ring : IDisposable
         }
     }
 
-    private void Issue(Action<Submission.Submission> action)
+    public void Issue(Action<Submission.Submission> action)
     {
         if (TryGetNextSubmission(out var sqe))
         {
             action(sqe);
+            Prepared(sqe);
             return;
         }
 
