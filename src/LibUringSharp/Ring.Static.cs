@@ -79,7 +79,7 @@ public sealed partial class Ring
     private static (uint, uint) ComputeRingSize(in io_uring_params p)
     {
         var size = (uint)io_uring_cqe.Size;
-        if ((p.features & IORING_SETUP_CQE32) != 0) size += io_uring_cqe.Size;
+        if ((p.flags & IORING_SETUP_CQE32) != 0) size += io_uring_cqe.Size;
 
         var sqSize = p.sq_off.array + p.sq_entries * sizeof(uint);
         var cqSize = p.cq_off.cqes + p.cq_entries * size;

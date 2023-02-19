@@ -3,7 +3,7 @@ using System.Text;
 using QRWells.AsyncIoUring.Async;
 using static QRWells.LibUringSharp.Linux.LibC;
 
-static string GetThisFilePath([CallerFilePath] string path = null) => path;
+static string GetThisFilePath([CallerFilePath] string path = ".") => path;
 var directory = Path.GetDirectoryName(GetThisFilePath());
 
 var file = AsyncFile.Open($"{directory}/test.txt", OpenOption.ReadOnly, new FilePermissions());

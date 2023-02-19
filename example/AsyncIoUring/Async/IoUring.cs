@@ -7,9 +7,9 @@ namespace QRWells.AsyncIoUring.Async;
 
 public class IoUring : IDisposable
 {
-    public static IoUring GLOBAL_RING = new IoUring(8);
+    public static IoUring GLOBAL_RING = new IoUring(128);
     private readonly Ring _ring;
-    private bool _running = true;
+    private volatile bool _running = true;
     private ulong _nextId = 0;
     private readonly ConcurrentDictionary<ulong, TaskCompletionSource<object>> _pendingTasks = new();
     private readonly ConcurrentDictionary<ulong, FixedArray<byte>> _fixedArrays = new();

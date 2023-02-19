@@ -4,8 +4,9 @@ public class MapQueueFailedException : Exception
 {
     public enum QueueType
     {
-        Submission,
-        Completion
+        SubmissionQueue,
+        SubmissionQueueEntries,
+        CompletionQueue
     }
 
     public MapQueueFailedException(QueueType queueType)

@@ -47,10 +47,10 @@ public sealed partial class Ring : IDisposable
             _submissionQueue = MapSubmissionQueue(in p, sqSize, out _sqMMapHandle, out _sqeMMapHandle);
             _completionQueue = MapCompletionQueue(in p, cqSize, out _cqMMapHandle);
         }
-        catch (Exception)
+        catch (MapQueueFailedException e)
         {
             Dispose();
-            throw new RingInitFailedException("Failed to map queues");
+            throw new RingInitFailedException($"Failed to map {e.Type} with sq size {sqSize} and cq size {cqSize}");
         }
 
         _flags = (RingSetup)p.flags;
@@ -92,14 +92,14 @@ public sealed partial class Ring : IDisposable
     {
         sqHandle = MemoryMap(ringSize, MemoryProtection.Read | MemoryProtection.Write,
             MemoryFlags.Shared | MemoryFlags.Populate, _ringFd, (long)IORING_OFF_SQ_RING);
-        if (sqHandle.IsInvalid) throw new MapQueueFailedException(MapQueueFailedException.QueueType.Submission);
+        if (sqHandle.IsInvalid) throw new MapQueueFailedException(MapQueueFailedException.QueueType.SubmissionQueue);
 
         var size = io_uring_sqe.Size;
         if ((p.flags & IORING_SETUP_SQE128) != 0) size += 64;
 
         sqeHandle = MemoryMap(size * p.sq_entries, MemoryProtection.Read | MemoryProtection.Write,
             MemoryFlags.Shared | MemoryFlags.Populate, _ringFd, (long)IORING_OFF_SQES);
-        if (sqeHandle.IsInvalid) throw new MapQueueFailedException(MapQueueFailedException.QueueType.Submission);
+        if (sqeHandle.IsInvalid) throw new MapQueueFailedException(MapQueueFailedException.QueueType.SubmissionQueueEntries);
 
         return new SubmissionQueue(this, sqHandle, sqeHandle, ringSize, in p.sq_off, _flags);
     }
@@ -121,7 +121,7 @@ public sealed partial class Ring : IDisposable
         {
             cqHandle = MemoryMap(ringSize, MemoryProtection.Read | MemoryProtection.Write,
                 MemoryFlags.Shared | MemoryFlags.Populate, _ringFd, (long)IORING_OFF_CQ_RING);
-            if (cqHandle.IsInvalid) throw new MapQueueFailedException(MapQueueFailedException.QueueType.Completion);
+            if (cqHandle.IsInvalid) throw new MapQueueFailedException(MapQueueFailedException.QueueType.CompletionQueue);
         }
 
         return new CompletionQueue(this, cqHandle, ringSize, in p.cq_off, _flags);
