@@ -3,6 +3,7 @@ obj/
 /packages/
 riderModule.iml
 /_ReSharper.Caches/
+.mono/
 .vs/
 .vscode/
 .idea/

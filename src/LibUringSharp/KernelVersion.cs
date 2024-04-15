@@ -14,12 +14,7 @@ public readonly struct KernelVersion : IComparable<KernelVersion>
         _patch = version.Build;
     }
 
-    public static bool IsAtLeast(int major, int minor)
-    {
-        return new KernelVersion().AtLeast(major, minor);
-    }
-    
-    public static bool IsAtLeast(int major, int minor, int patch)
+    public static bool IsAtLeast(int major, int minor, int patch = 0)
     {
         return new KernelVersion().AtLeast(major, minor, patch);
     }

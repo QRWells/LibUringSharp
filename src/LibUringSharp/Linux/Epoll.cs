@@ -29,24 +29,24 @@ public static partial class LibC
     private const int EPOLL_CTL_DEL = 2; /* Remove a file descriptor from the interface.  */
     private const int EPOLL_CTL_MOD = 3; /* Change file descriptor epoll_event structure.  */
 
-    [DllImport(Libc, SetLastError = true)]
-    public static extern int epoll_create(int size);
+    [LibraryImport(Libc, SetLastError = true)]
+    public static partial int epoll_create(int size);
 
-    [DllImport(Libc, SetLastError = true)]
-    public static extern int epoll_create1(int flags);
+    [LibraryImport(Libc, SetLastError = true)]
+    public static partial int epoll_create1(int flags);
 
-    [DllImport(Libc, SetLastError = true)]
-    public static extern int epoll_ctl(int epfd, int op, int fd, ref epoll_event ev);
+    [LibraryImport(Libc, SetLastError = true)]
+    public static partial int epoll_ctl(int epfd, int op, int fd, ref epoll_event ev);
 
-    [DllImport(Libc, SetLastError = true)]
-    public static extern unsafe int epoll_wait(int epfd, epoll_event* events, int maxevents, int timeout);
+    [LibraryImport(Libc, SetLastError = true)]
+    public static unsafe partial int epoll_wait(int epfd, epoll_event* events, int maxevents, int timeout);
 
-    [DllImport(Libc, SetLastError = true)]
-    public static extern unsafe int epoll_pwait(int epfd, epoll_event* events, int maxevents, int timeout,
+    [LibraryImport(Libc, SetLastError = true)]
+    public static unsafe partial int epoll_pwait(int epfd, epoll_event* events, int maxevents, int timeout,
         sigset_t* sigmask);
 
-    [DllImport(Libc, SetLastError = true)]
-    public static extern unsafe int
+    [LibraryImport(Libc, SetLastError = true)]
+    public static unsafe partial int
         epoll_pwait(int epfd, epoll_event* events, int maxevents, int timeout, nint sigmask);
 
     [StructLayout(LayoutKind.Explicit, Size = 8)]

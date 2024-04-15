@@ -12,9 +12,9 @@ public unsafe struct BufferRing
 {
     private readonly io_uring_buf_ring* _bufRing;
     public int Id { get; }
-    internal nuint RingAddress => new(_bufRing);
+    internal readonly nuint RingAddress => new(_bufRing);
     internal uint Entries { get; }
-    private int Mask => (int)(Entries - 1);
+    private readonly int Mask => (int)(Entries - 1);
     private int _counter = 0;
     private bool _released = false;
 
@@ -55,7 +55,7 @@ public unsafe struct BufferRing
     /// <summary>
     ///     Commit <code>count</code> previously added buffers to the kernel.
     /// </summary>
-    public void Commit()
+    public readonly void Commit()
     {
         var newTail = (ushort)(_bufRing->tail + _counter);
         Volatile.Write(ref _bufRing->tail, newTail);

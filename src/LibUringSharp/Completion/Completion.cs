@@ -1,6 +1,6 @@
 namespace QRWells.LibUringSharp.Completion;
 
-public readonly struct Completion
+public readonly struct Completion(int res, ulong userData, uint flags)
 {
     public bool IsBuffered => _flags.HasFlag(CompletionFlag.Buffer);
     public bool HasMore => _flags.HasFlag(CompletionFlag.More);
@@ -10,16 +10,9 @@ public readonly struct Completion
     public int BufferId => (int)((uint)_flags >> BufferIdShift);
     public nuint Pointer => new(UserData);
 
-    public Completion(int res, ulong userData, uint flags)
-    {
-        Result = res;
-        UserData = userData;
-        _flags = (CompletionFlag)flags;
-    }
-
-    public readonly int Result;
-    public readonly ulong UserData;
-    private readonly CompletionFlag _flags;
+    public readonly int Result = res;
+    public readonly ulong UserData = userData;
+    private readonly CompletionFlag _flags = (CompletionFlag)flags;
     private const int BufferIdShift = 16;
 }
 

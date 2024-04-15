@@ -1,6 +1,6 @@
 namespace QRWells.LibUringSharp.Exceptions;
 
-public class MapQueueFailedException : Exception
+public class MapQueueFailedException(MapQueueFailedException.QueueType queueType) : Exception
 {
     public enum QueueType
     {
@@ -9,10 +9,5 @@ public class MapQueueFailedException : Exception
         CompletionQueue
     }
 
-    public MapQueueFailedException(QueueType queueType)
-    {
-        Type = queueType;
-    }
-
-    public QueueType Type { get; }
+    public QueueType Type { get; } = queueType;
 }

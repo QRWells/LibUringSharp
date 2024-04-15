@@ -22,6 +22,6 @@ public static partial class LibC
     }
 
 
-    [DllImport(Libc, EntryPoint = "eventfd", CharSet = CharSet.Ansi)]
-    internal static extern int EventFd(uint initval, int flags);
+    [LibraryImport(Libc, EntryPoint = "eventfd")]
+    internal static partial int EventFd(uint initval, int flags);
 }

@@ -63,14 +63,14 @@ public static partial class LibC
         return new FileDescriptor(fd);
     }
 
-    [DllImport(Libc, EntryPoint = "open", CharSet = CharSet.Ansi)]
-    public static extern int Open(string path, int flags, int mode);
+    [LibraryImport(Libc, EntryPoint = "open", StringMarshalling = StringMarshalling.Custom, StringMarshallingCustomType = typeof(System.Runtime.InteropServices.Marshalling.AnsiStringMarshaller))]
+    public static partial int Open(string path, int flags, int mode);
 
-    [DllImport(Libc, EntryPoint = "close")]
-    public static extern int Close(int fd);
+    [LibraryImport(Libc, EntryPoint = "close")]
+    public static partial int Close(int fd);
 
-    [DllImport(Libc, EntryPoint = "stat", CharSet = CharSet.Ansi)]
-    public static extern int Stat(string path, out stat stat);
+    [LibraryImport(Libc, EntryPoint = "stat", StringMarshalling = StringMarshalling.Custom, StringMarshallingCustomType = typeof(System.Runtime.InteropServices.Marshalling.AnsiStringMarshaller))]
+    public static partial int Stat(string path, out stat stat);
 
     public class FilePermissions
     {

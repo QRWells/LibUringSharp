@@ -5,7 +5,7 @@
         <Nullable>enable</Nullable>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <LangVersion>latest</LangVersion>
-        <TargetFramework>net7.0</TargetFramework>
+        <TargetFramework>net8.0</TargetFramework>
 
         <Title>QRWells.LibUringSharp</Title>
         <PackageId>QRWells.LibUringSharp</PackageId>

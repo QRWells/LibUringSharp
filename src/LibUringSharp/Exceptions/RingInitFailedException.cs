@@ -1,8 +1,5 @@
 namespace QRWells.LibUringSharp.Exceptions;
 
-public class RingInitFailedException : IOException
+public class RingInitFailedException(string message) : IOException(message)
 {
-    public RingInitFailedException(string message) : base(message)
-    {
-    }
 }

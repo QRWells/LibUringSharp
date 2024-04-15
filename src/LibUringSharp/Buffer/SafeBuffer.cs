@@ -22,13 +22,13 @@ public struct SafeBuffer : IDisposable
         Length = (int)length;
     }
 
-    public byte this[int index]
+    public readonly byte this[int index]
     {
         get => ToSpan()[index];
         set => ToSpan()[index] = value;
     }
 
-    public ReadOnlySpan<byte> this[Range range]
+    public readonly ReadOnlySpan<byte> this[Range range]
     {
         get => ToSpan()[range];
     }
@@ -61,7 +61,7 @@ public struct SafeBuffer : IDisposable
         _disposed = true;
     }
 
-    public Span<byte> ToSpan()
+    public readonly Span<byte> ToSpan()
     {
         unsafe
         {
@@ -76,14 +76,18 @@ public struct SafeBuffer : IDisposable
     /// <returns>A new <see cref="SafeBuffer" />.</returns>
     public static SafeBuffer Create(nuint length)
     {
-        if (length == 0) throw new ArgumentOutOfRangeException(nameof(length));
-        SafeBuffer res;
-        unsafe
+        if (length != 0)
         {
-            var ptr = NativeMemory.AlignedAlloc(length, 4096);
-            res = new SafeBuffer(ptr, length);
+            SafeBuffer res;
+            unsafe
+            {
+                var ptr = NativeMemory.AlignedAlloc(length, 4096);
+                res = new SafeBuffer(ptr, length);
+            }
+
+            return res;
         }
 
-        return res;
+        throw new ArgumentOutOfRangeException(nameof(length));
     }
 }

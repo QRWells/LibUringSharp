@@ -1,25 +1,26 @@
 using System.Collections.Concurrent;
 using QRWells.LibUringSharp;
 using QRWells.LibUringSharp.Linux.Handles;
-using QRWells.LibUringSharp.Submission;
 
 namespace QRWells.AsyncIoUring.Async;
 
 public class IoUring : IDisposable
 {
-    public static IoUring GLOBAL_RING = new IoUring(128);
+    public static IoUring GLOBAL_RING = new(128);
     private readonly Ring _ring;
     private volatile bool _running = true;
     private ulong _nextId = 0;
     private readonly ConcurrentDictionary<ulong, TaskCompletionSource<object>> _pendingTasks = new();
     private readonly ConcurrentDictionary<ulong, FixedArray<byte>> _fixedArrays = new();
-    private Thread _completionThread;
+    private readonly Thread _completionThread;
     public IoUring(uint queueDepth)
     {
-        _ring = new LibUringSharp.Ring(queueDepth);
-        _completionThread = new Thread(CompletionThread);
-        _completionThread.IsBackground = true;
-        _completionThread.Name = "Completion Thread";
+        _ring = new Ring(queueDepth);
+        _completionThread = new Thread(CompletionThread)
+        {
+            IsBackground = true,
+            Name = "Completion Thread"
+        };
         _completionThread.Start();
     }
 

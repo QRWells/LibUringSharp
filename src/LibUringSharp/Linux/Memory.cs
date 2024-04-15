@@ -36,12 +36,12 @@ public static partial class LibC
         return new MMapHandle(result, length);
     }
 
-    [DllImport(Libc, EntryPoint = "mmap", SetLastError = true)]
-    public static extern nint MemMap(nint addr, ulong length, int prot, int flags, int fd, long offset);
+    [LibraryImport(Libc, EntryPoint = "mmap", SetLastError = true)]
+    public static partial nint MemMap(nint addr, ulong length, int prot, int flags, int fd, long offset);
 
-    [DllImport(Libc, EntryPoint = "munmap", SetLastError = true)]
-    public static extern int MemUnmap(nint addr, ulong length);
+    [LibraryImport(Libc, EntryPoint = "munmap", SetLastError = true)]
+    public static partial int MemUnmap(nint addr, ulong length);
 
-    [DllImport(Libc, EntryPoint = "madvise", SetLastError = true)]
-    public static extern int MemAdvise(nint addr, ulong length, int advice);
+    [LibraryImport(Libc, EntryPoint = "madvise", SetLastError = true)]
+    public static partial int MemAdvise(nint addr, ulong length, int advice);
 }

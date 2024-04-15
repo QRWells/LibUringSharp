@@ -16,8 +16,4 @@ internal class RegisterEventFdFailedException : Exception
     public RegisterEventFdFailedException(string? message, Exception? innerException) : base(message, innerException)
     {
     }
-
-    protected RegisterEventFdFailedException(SerializationInfo info, StreamingContext context) : base(info, context)
-    {
-    }
 }
