@@ -228,7 +228,7 @@ public sealed partial class Ring : IDisposable
 
     #region Basic fields
 
-    private readonly FileDescriptor _ringFd;
+    private FileDescriptor _ringFd;
     private FileDescriptor _enterRingFd;
     private RingInterrupt _intFlags;
     private readonly RingFeature _features;

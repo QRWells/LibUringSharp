@@ -45,5 +45,9 @@ public enum ErrorNo
     TooManyLinks = 31,
     BrokenPipe = 32,
     NumericalArgumentOutOfRange = 33,
-    NumericalResultNotRepresentable = 34
+    NumericalResultNotRepresentable = 34,
+
+    DeadlockCondition = 35,
+
+    OperationNotSupported = 95
 }

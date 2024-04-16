@@ -15,18 +15,10 @@ public readonly unsafe partial struct Submission
         unchecked
         {
             _sqe->opcode = (byte)op;
-            _sqe->flags = 0;
-            _sqe->ioprio = 0;
             _sqe->fd = fd;
             _sqe->off = offset;
             _sqe->addr = (nuint)addr;
             _sqe->len = len;
-            _sqe->rw_flags = 0;
-            _sqe->buf_index = 0;
-            _sqe->personality = 0;
-            _sqe->file_index = 0;
-            _sqe->addr3 = 0;
-            _sqe->__pad2 = 0;
         }
     }
 
@@ -97,6 +89,7 @@ public readonly unsafe partial struct Submission
     public void PrepareOpenAtDirect(int dfd, char* path, int flags, uint mode, uint fileIndex)
     {
         PrepareOpenAt(dfd, path, flags, mode);
+        if (fileIndex == IORING_FILE_INDEX_ALLOC) fileIndex--;
         SetTargetFixedFile(fileIndex);
     }
 
@@ -111,6 +104,7 @@ public readonly unsafe partial struct Submission
     public void PrepareOpenAt2Direct(int dfd, char* path, open_how* how, uint fileIndex)
     {
         PrepareOpenAt2(dfd, path, how);
+        if (fileIndex == IORING_FILE_INDEX_ALLOC) fileIndex--;
         SetTargetFixedFile(fileIndex);
     }
 
@@ -137,6 +131,13 @@ public readonly unsafe partial struct Submission
     public void PrepareRead(FileDescriptor fd, void* buf, int length, ulong offset)
     {
         PrepareReadWrite(IoUringOp.Read, fd, buf, (uint)length, offset);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void PrepareReadMultiShot(FileDescriptor fd, uint length, ulong offset, int buf_group)
+    {
+        PrepareReadWrite(IoUringOp.ReadMultishot, fd, null, length, offset);
+        _sqe->buf_group = (ushort)buf_group;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -182,9 +183,9 @@ public readonly unsafe partial struct Submission
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void PrepareFAllocate(FileDescriptor fd, int mode, long offset, long len)
+    public void PrepareFAllocate(FileDescriptor fd, int mode, ulong offset, ulong len)
     {
-        PrepareReadWrite(IoUringOp.FAllocate, fd, null, (uint)mode, (ulong)offset);
+        PrepareReadWrite(IoUringOp.FAllocate, fd, null, (uint)mode, offset);
         _sqe->addr = (nuint)len;
     }
 
@@ -310,6 +311,7 @@ public readonly unsafe partial struct Submission
     public void PrepareAcceptDirect(int fd, SocketAddr* addr, uint* addrLen, int flags, uint fileIndex)
     {
         PrepareAccept(fd, addr, addrLen, flags);
+        if (fileIndex == IORING_FILE_INDEX_ALLOC) fileIndex--;
         SetTargetFixedFile(fileIndex);
     }
 
@@ -346,6 +348,13 @@ public readonly unsafe partial struct Submission
     {
         PrepareReadWrite(IoUringOp.Send, socketFd, buf, (uint)len, 0);
         _sqe->msg_flags = (uint)flags;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void PrepareSendTo(FileDescriptor socket_fd, void* buf, ulong len, int flags, SocketAddr* addr, ushort addrLen)
+    {
+        PrepareSend(socket_fd, buf, len, flags);
+        PrepareSendSetAddr(addr, addrLen);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -578,6 +587,25 @@ public readonly unsafe partial struct Submission
     {
         PrepareReadWrite(IoUringOp.MsgRing, fd, null, len, data);
         _sqe->msg_ring_flags = flags;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void PrepareMessageRingFd(int fd, int source_fd, int target_fd, ulong data, uint flags)
+    {
+        PrepareReadWrite(IoUringOp.MsgRing, fd, (void*)IORING_MSG_SEND_FD, 0, data);
+        _sqe->addr3 = (ulong)source_fd;
+        if ((uint)target_fd == IORING_FILE_INDEX_ALLOC) target_fd--;
+        SetTargetFixedFile((uint)target_fd);
+        _sqe->msg_ring_flags = flags;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void PrepareMessageRingFdAllocate(int fd, int source_fd, ulong data, uint flags)
+    {
+        unchecked
+        {
+            PrepareMessageRingFd(fd, source_fd, (int)IORING_FILE_INDEX_ALLOC, data, flags);
+        }
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

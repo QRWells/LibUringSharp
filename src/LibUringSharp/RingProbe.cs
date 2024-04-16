@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Text;
 using static QRWells.LibUringSharp.Linux.LibC;
 
 namespace QRWells.LibUringSharp;
@@ -44,5 +45,17 @@ public sealed class RingProbe
     public bool HasOp(IoUringOp op)
     {
         return (byte)op <= _lastOp && _supportedOps[(byte)op];
+    }
+
+    public override string ToString()
+    {
+        var sb = new StringBuilder();
+        for (var i = 0; i <= _lastOp; i++)
+        {
+            if (_supportedOps[i]) sb.Append($"{(IoUringOp)i}, ");
+        }
+
+        if (sb.Length > 0) sb.Length -= 2;
+        return sb.ToString();
     }
 }

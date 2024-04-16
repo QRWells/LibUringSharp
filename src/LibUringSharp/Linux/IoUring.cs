@@ -56,6 +56,13 @@ public static partial class LibC
         UringCmd,
         SendZc,
         SendMsgZc,
+        ReadMultishot,
+        WaitId,
+        FutexWait,
+        FutexWake,
+        FutexWaitV,
+        FixedFdInstall,
+        FTruncate,
 
         /* this goes last, obviously */
         Last
@@ -167,6 +174,7 @@ public static partial class LibC
     public const uint IORING_TIMEOUT_REALTIME = 1U << 3;
     public const uint IORING_LINK_TIMEOUT_UPDATE = 1U << 4;
     public const uint IORING_TIMEOUT_ETIME_SUCCESS = 1U << 5;
+    public const uint IORING_TIMEOUT_MULTISHOT = 1U << 6;
     public const uint IORING_TIMEOUT_CLOCK_MASK = IORING_TIMEOUT_BOOTTIME | IORING_TIMEOUT_REALTIME;
 
     public const uint IORING_TIMEOUT_UPDATE_MASK = IORING_TIMEOUT_UPDATE | IORING_LINK_TIMEOUT_UPDATE;
@@ -266,6 +274,13 @@ public static partial class LibC
     public const uint IORING_MSG_RING_FLAGS_PASS = 1U << 1;
 
     /*
+     * IORING_OP_FIXED_FD_INSTALL flags (sqe->install_fd_flags)
+     *
+     * IORING_FIXED_FD_NO_CLOEXEC	Don't mark the fd as O_CLOEXEC
+     */
+    public const uint IORING_FIXED_FD_NO_CLOEXEC = 1U << 0;
+
+    /*
      * cqe->flags
      *
      * IORING_CQE_F_BUFFER	If set, the upper 16 bits are the buffer ID
@@ -288,6 +303,9 @@ public static partial class LibC
     public const ulong IORING_OFF_SQ_RING = 0UL;
     public const ulong IORING_OFF_CQ_RING = 0x8000000UL;
     public const ulong IORING_OFF_SQES = 0x10000000UL;
+    public const ulong IORING_OFF_PBUF_RING = 0x80000000UL;
+    public const ulong IORING_OFF_PBUF_SHIFT = 16;
+    public const ulong IORING_OFF_MMAP_MASK = 0xf8000000UL;
 
     /*
      * sq_ring->flags
@@ -372,7 +390,18 @@ public static partial class LibC
 
     /* register a range of fixed file slots for automatic slot allocation */
     public const int IORING_REGISTER_FILE_ALLOC_RANGE = 25;
-    public const int IORING_REGISTER_LAST = 26;
+
+    /* return status information for a buffer group */
+    public const int IORING_REGISTER_PBUF_STATUS = 26;
+
+    /* set/clear busy poll settings */
+    public const int IORING_REGISTER_NAPI = 27;
+    public const int IORING_UNREGISTER_NAPI = 28;
+
+    public const int IORING_REGISTER_LAST = 29;
+
+    /* flag added to the opcode to use a registered ring fd */
+    public const int IORING_REGISTER_USE_REGISTERED_RING = 1 << 31;
 
     /* io-wq worker categories */
 
@@ -477,6 +506,8 @@ public static partial class LibC
 
         [FieldOffset(16)] public ulong addr; /* pointer to buffer or iovecs */
         [FieldOffset(16)] public ulong splice_off_in;
+        [FieldOffset(16)] public uint level;
+        [FieldOffset(20)] public uint optname;
 
         [FieldOffset(24)] public uint len; /* buffer size or number of iovecs */
 
@@ -500,6 +531,9 @@ public static partial class LibC
         [FieldOffset(28)] public uint xattr_flags;
         [FieldOffset(28)] public uint msg_ring_flags;
         [FieldOffset(28)] public uint uring_cmd_flags;
+        [FieldOffset(28)] public uint waited_flags;
+        [FieldOffset(28)] public uint futex_flags;
+        [FieldOffset(28)] public uint install_fd_flags;
 
         [FieldOffset(32)] public ulong user_data; /* data to be passed back at completion time */
 
@@ -515,12 +549,14 @@ public static partial class LibC
 
         [FieldOffset(44)] public int splice_fd_in;
         [FieldOffset(44)] public uint file_index;
+        [FieldOffset(44)] public uint optlen;
         [FieldOffset(44)] public ushort addr_len;
         [FieldOffset(46)] public ushort __pad3;
 
 
         [FieldOffset(48)] public ulong addr3;
         [FieldOffset(56)] public ulong __pad2;
+        [FieldOffset(44)] public ulong optval;
 
         /// <summary>
         ///     If the ring is initialized with IORING_SETUP_SQE128,
@@ -580,7 +616,7 @@ public static partial class LibC
         public uint dropped;
         public uint array;
         public uint resv1;
-        public ulong resv2;
+        public ulong user_addr;
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -594,7 +630,7 @@ public static partial class LibC
         public uint cqes;
         public uint flags;
         public uint resv1;
-        public ulong resv2;
+        public ulong user_addr;
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -742,8 +778,27 @@ public static partial class LibC
         public ulong ring_addr;
         public uint ring_entries;
         public ushort bgid;
-        public ushort pad;
+        public ushort flags;
         public unsafe fixed ulong resv[3];
+    }
+
+    /* argument for IORING_REGISTER_PBUF_STATUS */
+    [StructLayout(LayoutKind.Sequential)]
+    public struct io_uring_buf_status
+    {
+        public uint buf_group;  /* input */
+        public uint head;       /* output */
+        public unsafe fixed uint resv[8];
+    }
+
+    /* argument for IORING_(UN)REGISTER_NAPI */
+    [StructLayout(LayoutKind.Sequential)]
+    public struct io_uring_napi
+    {
+        public uint busy_poll_to;
+        public byte prefer_busy_poll;
+        public unsafe fixed byte pad[3];
+        public ulong resv;
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -790,4 +845,12 @@ public static partial class LibC
         private readonly uint payloadlen;
         private readonly uint flags;
     }
+
+    /*
+     * Argument for IORING_OP_URING_CMD when file is a socket
+     */
+    public const int SOCKET_URING_OP_SIOCINQ = 0;
+    public const int SOCKET_URING_OP_SIOCOUTQ = 1;
+    public const int SOCKET_URING_OP_GETSOCKOPT = 2;
+    public const int SOCKET_URING_OP_SETSOCKOPT = 3;
 }

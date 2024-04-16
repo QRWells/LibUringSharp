@@ -15,5 +15,6 @@ public enum RingFeature : uint
     NativeWorkers = 1 << 9,
     RSrcTags = 1 << 10,
     CqeSkip = 1 << 11,
-    LinkedFile = 1 << 12
+    LinkedFile = 1 << 12,
+    RegRegRing = 1 << 13,
 }

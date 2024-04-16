@@ -95,5 +95,22 @@ public enum RingSetup : uint
     ///     Rather than running bits of task work whenever the task transitions
     ///     try to do it just before it is needed.
     /// </summary>
-    DeferTaskRun = 1U << 13
+    DeferTaskRun = 1U << 13,
+
+    /// <summary>
+    ///    Application provides ring memory.
+    /// </summary>
+    SetupNoMMap = 1 << 14,
+
+    /// <summary>
+    ///    Register the ring fd in itself for use with
+    ///    <see cref="Linux.LibC.IORING_REGISTER_USE_REGISTERED_RING"/>; return a registered fd index
+    ///    rather than an fd.
+    /// </summary>
+    RegisteredFdOnly = 1 << 15,
+
+    /// <summary>
+    ///    Removes indirection through the SQ index array.
+    /// </summary>
+    NoSqArray = 1 << 16,
 }
