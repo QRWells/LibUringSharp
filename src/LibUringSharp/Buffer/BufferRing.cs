@@ -23,6 +23,7 @@ public unsafe struct BufferRing
         entries = BitOperations.RoundUpToPowerOf2(entries);
         var size = 16 * entries;
         _bufRing = (io_uring_buf_ring*)NativeMemory.AlignedAlloc(size, 4096);
+        new Span<byte>(_bufRing, checked((int)size)).Clear();
         _bufRing->tail = 0;
         Id = id;
         Entries = entries;
@@ -55,10 +56,11 @@ public unsafe struct BufferRing
     /// <summary>
     ///     Commit <code>count</code> previously added buffers to the kernel.
     /// </summary>
-    public readonly void Commit()
+    public void Commit()
     {
         var newTail = (ushort)(_bufRing->tail + _counter);
         Volatile.Write(ref _bufRing->tail, newTail);
+        _counter = 0;
     }
 
     public void Release()

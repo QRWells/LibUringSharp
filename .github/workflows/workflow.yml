@@ -1,6 +1,3 @@
-# This workflow will build a .NET project
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-net
-
 name: Build and Release
 
 on:
@@ -15,47 +12,62 @@ on:
       - "published"
 
 jobs:
-  build:
+  build-test:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - dotnet-version: 8.0.x
+            framework: net8.0
+          - dotnet-version: 10.0.x
+            framework: net10.0
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Setup .NET
-        uses: actions/setup-dotnet@v3
+        uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 7.0.x
+          dotnet-version: ${{ matrix.dotnet-version }}
       - name: Restore dependencies
-        run: dotnet restore
+        run: dotnet restore LibUringSharp.sln
       - name: Build
-        run: dotnet build --configuration Release --no-restore
-  
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v3
-        with:
-          dotnet-version: 7.0.x
+        run: dotnet build LibUringSharp.sln --configuration Release --no-restore
       - name: Test
-        run: dotnet test --configuration Release --verbosity normal
-  
+        run: dotnet test test/LibUringSharp.Test/LibUringSharp.Test.csproj --configuration Release --framework ${{ matrix.framework }} --no-build --verbosity normal
+
+  pack:
+    runs-on: ubuntu-latest
+    needs: [ build-test ]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Restore dependencies
+        run: dotnet restore LibUringSharp.sln
+      - name: Pack
+        run: dotnet pack src/LibUringSharp/LibUringSharp.csproj --configuration Release --no-restore --output artifacts
+
   release:
     if: github.event_name == 'release'
-    needs: [ test ]
+    needs: [ pack ]
     runs-on: ubuntu-latest
     env:
       GITHUB_TOKEN: ${{ secrets.PACKAGE_KEY }}
       NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set VERSION variable from tag
         run: echo "VERSION=${GITHUB_REF/refs\/tags\/v/}" >> $GITHUB_ENV
       - name: Setup .NET
-        uses: actions/setup-dotnet@v3
+        uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 7.0.x
+          dotnet-version: 10.0.x
+      - name: Restore dependencies
+        run: dotnet restore LibUringSharp.sln
       - name: Pack
-        run: dotnet pack src/LibUringSharp --configuration Release /p:Version=${VERSION} --output .
+        run: dotnet pack src/LibUringSharp/LibUringSharp.csproj --configuration Release --no-restore /p:Version=${VERSION} --output .
       - name: Push to github packages
         run: dotnet nuget push QRWells.LibUringSharp.${VERSION}.nupkg --source https://nuget.pkg.github.com/QRWells/index.json --api-key ${GITHUB_TOKEN}
       - name: Push to nuget

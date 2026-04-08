@@ -12,23 +12,23 @@ public class RingTests
         using var ring = new Ring(4);
 
         Assert.That(ring, Is.Not.Null);
-        Assert.Multiple(() =>
+        using (Assert.EnterMultipleScope())
         {
             Assert.That(ring.IsKernelIoPolling, Is.False);
             Assert.That(ring.IsKernelSubmissionQueuePolling, Is.False);
-        });
+        }
 
         Assert.That(ring.TryGetNextSubmission(out var sub), Is.True);
         sub.PrepareNop(2023);
         ring.Prepared(in sub);
-        Assert.Multiple(() =>
+        using (Assert.EnterMultipleScope())
         {
             Assert.That(ring.Submit(), Is.EqualTo(1));
 
             Assert.That(ring.TryGetCompletion(out var com), Is.True);
             Assert.That(com.UserData, Is.EqualTo(2023));
             Assert.That(com.Result, Is.EqualTo(0));
-        });
+        }
     }
 
     [Test]
@@ -52,11 +52,11 @@ public class RingTests
         using var ring = new Ring(4);
 
         Assert.That(ring, Is.Not.Null);
-        Assert.Multiple(() =>
+        using (Assert.EnterMultipleScope())
         {
             Assert.That(ring.IsKernelIoPolling, Is.False);
             Assert.That(ring.IsKernelSubmissionQueuePolling, Is.False);
-        });
+        }
 
         for (ulong i = 0; i < 4; i++)
         {
@@ -65,15 +65,22 @@ public class RingTests
             ring.Prepared(in sub);
         }
 
-        Assert.That(ring.TryGetNextSubmission(out _), Is.False);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(ring.TryGetNextSubmission(out _), Is.False);
 
-        Assert.That(ring.Submit(), Is.EqualTo(4));
+            Assert.That(ring.Submit(), Is.EqualTo(4));
+        }
 
         for (ulong i = 0; i < 4; i++)
         {
-            Assert.That(ring.TryGetCompletion(out var com), Is.True);
-            Assert.That(com.UserData, Is.EqualTo(i));
-            Assert.That(com.Result, Is.EqualTo(0));
+            using (Assert.EnterMultipleScope())
+            {
+                Assert.That(ring.TryGetCompletion(out var com), Is.True);
+                Assert.That(com.UserData, Is.EqualTo(i));
+                Assert.That(com.Result, Is.EqualTo(0));
+            }
+
         }
     }
 
@@ -97,11 +104,11 @@ public class RingTests
         Assert.That(ring.TryGetCompletions(completions), Is.EqualTo(4));
 
         for (ulong i = 0; i < 4; i++)
-            Assert.Multiple(() =>
+            using (Assert.EnterMultipleScope())
             {
                 Assert.That(completions[i].UserData, Is.EqualTo(i));
                 Assert.That(completions[i].Result, Is.EqualTo(0));
-            });
+            }
     }
 
     [Test]

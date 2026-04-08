@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using QRWells.LibUringSharp.Enums;
+using QRWells.LibUringSharp.Linux.Exceptions;
 using QRWells.LibUringSharp.Linux.Handles;
 using static QRWells.LibUringSharp.Linux.LibC;
 
@@ -36,33 +37,35 @@ public sealed unsafe class SubmissionQueue
         _ringEntries = *(uint*)(sqPtr.Address + offsets.ring_entries);
         _kFlags = (uint*)(sqPtr.Address + offsets.flags);
         _kDropped = (uint*)(sqPtr.Address + offsets.dropped);
-        _array = (uint*)(sqPtr.Address + offsets.array);
+        _array = flags.HasFlag(RingSetup.NoSqArray) ? null : (uint*)(sqPtr.Address + offsets.array);
 
         _sqes = (io_uring_sqe*)sqePtr.Address;
         _flags = flags;
 
-        _sqeState = new int[_ringEntries];
+        _sqeState = new int[checked((int)(_ringEntries << Shift))];
         // Directly map SQ slots to SQEs
-        for (var i = 0u; i < _ringEntries; ++i) _array[i] = i;
+        if (_array != null)
+        {
+            for (var i = 0u; i < _ringEntries; ++i) _array[i] = i;
+        }
     }
 
     private int Shift => _flags.HasFlag(RingSetup.Sqe128) ? 1 : 0;
+    private uint SqeBytes => _flags.HasFlag(RingSetup.Sqe128) ? (uint)io_uring_sqe.Size128 : (uint)io_uring_sqe.Size;
     private bool IsSqPolling => _flags.HasFlag(RingSetup.KernelSubmissionQueuePolling);
 
     internal void SetNotFork()
     {
-        if (_ringPtr.Address == nint.Zero || _sqes != (void*)nint.Zero)
+        if (_ringPtr.Address == nint.Zero || _sqes == (void*)nint.Zero)
             throw new InvalidOperationException("Ring is not initialized");
 
-        var len = io_uring_sqe.Size;
-        if (_flags.HasFlag(RingSetup.Sqe128)) len += 64;
-        len *= _ringEntries;
+        var len = (ulong)SqeBytes * _ringEntries;
         var ret = MemAdvise(new nint(_sqes), len, MADV_DONTFORK);
-        if (ret < 0) throw new Exception("MemAdvise failed");
+        if (ret < 0) throw new ErrnoException("madvise failed for SQEs");
 
         len = _ringSize;
         ret = MemAdvise(_ringPtr.Address, len, MADV_DONTFORK);
-        if (ret < 0) throw new Exception("MemAdvise failed");
+        if (ret < 0) throw new ErrnoException("madvise failed for SQ ring");
     }
 
     internal bool TryGetNextSubmission(out Submission submission)
@@ -91,7 +94,7 @@ public sealed unsafe class SubmissionQueue
         }
 
         var internalSqe = &_sqes[idx];
-        Unsafe.InitBlockUnaligned(internalSqe, 0, (uint)io_uring_sqe.Size);
+        Unsafe.InitBlockUnaligned(internalSqe, 0, SqeBytes);
 
         _sqeTail = next;
         Volatile.Write(ref _sqeState[idx], SqeStateReserved);
@@ -106,7 +109,7 @@ public sealed unsafe class SubmissionQueue
 
         uint head;
         var tail = _sqeTail;
-        var next = unchecked(_sqeTail + submissions.Length);
+        var desired = (uint)submissions.Length;
 
         if (!IsSqPolling)
             head = *_kHead;
@@ -114,26 +117,28 @@ public sealed unsafe class SubmissionQueue
             head = Volatile.Read(ref *_kHead);
 
         // No more free submissions
-        if (next - head > _ringEntries) return 0;
-
-        _sqeTail = (uint)next;
+        if (_sqeTail + desired - head > _ringEntries) return 0;
 
         var count = 0;
 
         for (var i = 0; i < submissions.Length; ++i)
         {
-            var idx = (tail & _ringMask) << Shift;
-            tail = unchecked(tail + 1);
+            var next = unchecked(tail + 1);
+            if (next - head > _ringEntries)
+                break;
 
+            var idx = (tail & _ringMask) << Shift;
             if (_sqeState[idx] > SqeStateFree) break;
 
             var internalSqe = &_sqes[idx];
-            Unsafe.InitBlockUnaligned(internalSqe, 0, (uint)io_uring_sqe.Size);
+            Unsafe.InitBlockUnaligned(internalSqe, 0, SqeBytes);
             Volatile.Write(ref _sqeState[idx], SqeStateReserved);
             submissions[i] = new Submission(internalSqe, idx);
             ++count;
+            tail = next;
         }
 
+        _sqeTail = tail;
         return count;
     }
 

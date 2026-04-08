@@ -4,7 +4,7 @@ namespace QRWells.LibUringSharp.Linux.Handles;
 
 public class FileDescriptor : SafeHandleMinusOneIsInvalid
 {
-    public FileDescriptor(int fd) : base(true)
+    public FileDescriptor(int fd, bool ownsHandle = true) : base(ownsHandle)
     {
         SetHandle(fd);
     }

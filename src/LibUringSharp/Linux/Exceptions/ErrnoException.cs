@@ -7,6 +7,16 @@ public class ErrnoException : IOException
         Errno = LibC.errno;
     }
 
+    public ErrnoException(string message) : base(message)
+    {
+        Errno = LibC.errno;
+    }
+
+    public ErrnoException(int errno, string message) : base(message)
+    {
+        Errno = errno;
+    }
+
     public int Errno { get; }
 }
 

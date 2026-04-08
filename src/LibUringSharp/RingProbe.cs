@@ -1,6 +1,7 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
+using QRWells.LibUringSharp.Linux.Exceptions;
 using static QRWells.LibUringSharp.Linux.LibC;
 
 namespace QRWells.LibUringSharp;
@@ -21,7 +22,6 @@ public sealed class RingProbe
         unsafe
         {
             var probe = (io_uring_probe*)NativeMemory.Alloc((int)len);
-            NativeMemory.Alloc(len);
             Unsafe.InitBlockUnaligned(probe, 0, len);
             var ret = ring.RegisterProbe(probe, 256);
             if (ret >= 0)
@@ -36,7 +36,7 @@ public sealed class RingProbe
             }
 
             NativeMemory.Free(probe);
-            throw new Exception("io_uring_register_probe failed");
+            throw new ErrnoException(-ret, "io_uring_register_probe failed");
         }
     }
 

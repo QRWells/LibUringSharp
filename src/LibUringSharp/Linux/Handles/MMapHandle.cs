@@ -7,8 +7,11 @@ namespace QRWells.LibUringSharp.Linux.Handles;
 /// </summary>
 public class MMapHandle : SafeHandleMinusOneIsInvalid
 {
-    public MMapHandle(nint ptr, ulong size) : base(true)
+    private readonly bool _ownsHandle;
+
+    public MMapHandle(nint ptr, ulong size, bool ownsHandle = true) : base(ownsHandle)
     {
+        _ownsHandle = ownsHandle;
         Size = size;
         SetHandle(ptr);
     }
@@ -20,6 +23,7 @@ public class MMapHandle : SafeHandleMinusOneIsInvalid
     protected override bool ReleaseHandle()
     {
         if (IsInvalid) return true;
+        if (!_ownsHandle) return true;
         return LibC.MemUnmap(handle, Size) == 0;
     }
 }

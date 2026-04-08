@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using QRWells.LibUringSharp.Enums;
+using QRWells.LibUringSharp.Linux.Exceptions;
 using QRWells.LibUringSharp.Linux.Handles;
 using static QRWells.LibUringSharp.Linux.LibC;
 
@@ -46,7 +47,7 @@ public sealed unsafe class CompletionQueue
             throw new InvalidOperationException("Ring is not initialized");
 
         var ret = MemAdvise(_ringPtr.Address, _ringSize, MADV_DONTFORK);
-        if (ret < 0) throw new Exception("MemAdvise failed");
+        if (ret < 0) throw new ErrnoException("madvise failed for CQ ring");
     }
 
     public bool TryGetCompletion(out Completion cqe)
@@ -54,7 +55,7 @@ public sealed unsafe class CompletionQueue
         var head = Volatile.Read(ref *_kHead);
 
         // No Completion Queue Event available
-        if (head == *_kTail)
+        if (head == Volatile.Read(ref *_kTail))
         {
             cqe = default;
             return false;
@@ -73,7 +74,7 @@ public sealed unsafe class CompletionQueue
         var head = Volatile.Read(ref *_kHead);
 
         // No Completion could be ignored
-        if (head == *_kTail) return;
+        if (head == Volatile.Read(ref *_kTail)) return;
 
         Volatile.Write(ref *_kHead, head + (uint)count);
     }
@@ -81,14 +82,14 @@ public sealed unsafe class CompletionQueue
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private uint Ready()
     {
-        return Volatile.Read(ref *_kHead) - *_kTail;
+        return Volatile.Read(ref *_kTail) - *_kHead;
     }
 
     internal uint TryGetBatch(Span<Completion> completions)
     {
         var overflowChecked = false;
 
-        again:
+    again:
         var ready = Ready();
         if (ready != 0)
         {
@@ -103,6 +104,7 @@ public sealed unsafe class CompletionQueue
                 completions[i] = new Completion(internalCqe->res, internalCqe->user_data, internalCqe->flags);
             }
 
+            Volatile.Write(ref *_kHead, last);
             return count;
         }
 

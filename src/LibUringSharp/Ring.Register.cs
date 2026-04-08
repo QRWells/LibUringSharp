@@ -34,7 +34,7 @@ public sealed unsafe partial class Ring
     public int UnregisterRingFd()
     {
         var up = new io_uring_rsrc_update { offset = _enterRingFd };
-        if (!_intFlags.HasFlag(RingInterrupt.RegRegRing))
+        if (!_intFlags.HasFlag(RingInterrupt.RegRing))
             return (int)ErrorNo.InvalidArgument;
         var ret = DoRegister(IORING_UNREGISTER_RING_FDS, &up, 1);
         if (ret != 1) return ret;
@@ -105,7 +105,7 @@ public sealed unsafe partial class Ring
             ring_entries = bufferRing.Entries
         };
         var res = DoRegister(IORING_REGISTER_PBUF_RING, &bufReg, 1);
-        if (res != 0) throw new Exception("Failed to register buffer ring");
+        if (res != 0) throw new ErrnoException("Failed to register buffer ring");
         _bufferRings.Add(bufferRing.Id, bufferRing);
     }
 
@@ -114,7 +114,7 @@ public sealed unsafe partial class Ring
         if (!_bufferRings.ContainsKey(groupId)) return;
         var reg = new io_uring_buf_reg { bgid = (ushort)groupId };
         var res = DoRegister(IORING_UNREGISTER_PBUF_RING, &reg, 1);
-        if (res != 0) throw new Exception("Failed to unregister buffer ring");
+        if (res != 0) throw new ErrnoException("Failed to unregister buffer ring");
         _bufferRings.Remove(groupId);
     }
 
@@ -141,20 +141,21 @@ public sealed unsafe partial class Ring
     {
         var id = _lastGroupId++;
         var bufferGroup = new BufferGroup(bufferSize, bufferCount);
-        var tcs = new TaskCompletionSource<int>();
-
-        Issue(sqe =>
+        try
         {
-            sqe.PrepareProvideBuffers(bufferGroup.Base, (int)bufferGroup.BufferSize, (int)bufferGroup.BufferCount,
-                id, 0);
-            Prepared(sqe);
-            SubmitAndWait(1);
-
+            ExecuteInternalSubmission(sqe =>
+            {
+                sqe.PrepareProvideBuffers(bufferGroup.Base, (int)bufferGroup.BufferSize, (int)bufferGroup.BufferCount,
+                    id, 0);
+            }, "provide buffers");
             _bufferGroups.Add(id, bufferGroup);
-            tcs.SetResult(id);
-        });
-
-        return tcs.Task;
+            return Task.FromResult(id);
+        }
+        catch
+        {
+            bufferGroup.Release();
+            throw;
+        }
     }
 
     /// <summary>
@@ -166,14 +167,13 @@ public sealed unsafe partial class Ring
     {
         if (!_bufferGroups.TryGetValue(bufferGroupId, out var bufferGroup)) return;
 
-        _bufferGroups.Remove(bufferGroupId);
-
-        Issue(sqe =>
+        ExecuteInternalSubmission(sqe =>
         {
             sqe.PrepareRemoveBuffers((int)bufferGroup.BufferCount, bufferGroupId);
-            Prepared(sqe);
-            SubmitAndWait(1);
-        });
+        }, "remove buffers");
+
+        _bufferGroups.Remove(bufferGroupId);
+        bufferGroup.Release();
     }
 
     public int RegisterSyncCancel(ref io_uring_sync_cancel_reg reg)

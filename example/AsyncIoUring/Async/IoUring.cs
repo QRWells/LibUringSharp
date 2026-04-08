@@ -6,13 +6,14 @@ namespace QRWells.AsyncIoUring.Async;
 
 public class IoUring : IDisposable
 {
-    public static IoUring GLOBAL_RING = new(128);
+    public static readonly IoUring GLOBAL_RING = new(128);
     private readonly Ring _ring;
     private volatile bool _running = true;
     private ulong _nextId = 0;
-    private readonly ConcurrentDictionary<ulong, TaskCompletionSource<object>> _pendingTasks = new();
+    private readonly ConcurrentDictionary<ulong, TaskCompletionSource<int>> _pendingTasks = new();
     private readonly ConcurrentDictionary<ulong, FixedArray<byte>> _fixedArrays = new();
     private readonly Thread _completionThread;
+
     public IoUring(uint queueDepth)
     {
         _ring = new Ring(queueDepth);
@@ -28,16 +29,26 @@ public class IoUring : IDisposable
     {
         while (_running)
         {
-            if (_ring.TryGetCompletion(out var completion))
+            if (!_ring.TryGetCompletion(out var completion))
             {
-                if (_pendingTasks.TryRemove(completion.UserData, out var tcs))
+                if (_pendingTasks.IsEmpty)
                 {
-                    if (_fixedArrays.TryRemove(completion.UserData, out var fixedArray))
-                    {
-                        fixedArray.Dispose();
-                    }
-                    tcs.SetResult(completion.Result);
+                    Thread.Sleep(10);
+                    continue;
                 }
+
+                _ring.GetEvents();
+                continue;
+            }
+
+            if (_pendingTasks.TryRemove(completion.UserData, out var tcs))
+            {
+                if (_fixedArrays.TryRemove(completion.UserData, out var fixedArray))
+                {
+                    fixedArray.Dispose();
+                }
+
+                tcs.SetResult(completion.Result);
             }
         }
     }
@@ -45,7 +56,7 @@ public class IoUring : IDisposable
     public Task<int> ReadAsync(FileDescriptor handle, byte[] buffer, int count, ulong offset)
     {
         var id = Interlocked.Increment(ref _nextId);
-        var tcs = new TaskCompletionSource<object>();
+        var tcs = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
         var fixedArray = new FixedArray<byte>(buffer);
         _pendingTasks.TryAdd(id, tcs);
         _fixedArrays.TryAdd(id, fixedArray);
@@ -58,13 +69,13 @@ public class IoUring : IDisposable
             }
         });
         _ring.Submit();
-        return tcs.Task.ContinueWith(t => (int)t.Result);
+        return tcs.Task;
     }
 
     public Task<int> WriteAsync(FileDescriptor handle, byte[] buffer, int count, ulong offset)
     {
         var id = Interlocked.Increment(ref _nextId);
-        var tcs = new TaskCompletionSource<object>();
+        var tcs = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
         var fixedArray = new FixedArray<byte>(buffer);
         _pendingTasks.TryAdd(id, tcs);
         _fixedArrays.TryAdd(id, fixedArray);
@@ -77,7 +88,7 @@ public class IoUring : IDisposable
             }
         });
         _ring.Submit();
-        return tcs.Task.ContinueWith(t => (int)t.Result);
+        return tcs.Task;
     }
 
     public void Dispose()
